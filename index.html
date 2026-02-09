@@ -90,10 +90,22 @@
         <div class="col-span-3 bg-gray-800 border-r border-gray-700 flex flex-col shadow-xl z-10 h-full max-h-screen">
             <!-- Header -->
             <div class="p-4 border-b border-gray-700 bg-gray-900 flex-shrink-0">
-                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
+                <h1
+                    class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400 mb-2">
                     灵动演示工坊 Pro
                 </h1>
-                <p class="text-xs text-gray-400 mt-1">Extensible Motion Canvas</p>
+                <div class="flex gap-2">
+                    <button onclick="document.getElementById('projectUpload').click()"
+                        class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs font-bold transition flex items-center gap-1 border border-gray-600">
+                        📂 打开项目
+                    </button>
+                    <button onclick="window.app.exportProject()"
+                        class="px-3 py-1.5 bg-blue-700 hover:bg-blue-600 rounded text-xs font-bold transition flex items-center gap-1 border border-blue-500 shadow-lg">
+                        💾 保存项目
+                    </button>
+                    <input type="file" id="projectUpload" accept=".json" class="hidden"
+                        onchange="window.app.loadProject(this.files[0])">
+                </div>
             </div>
 
             <!-- Controls Section (Fixed/Shrinkable) -->
@@ -493,7 +505,7 @@
                     currImg.top = canvas.getHeight() / 2;
                     if (prevImg) {
                         prevImg.opacity = 1;
-                        canvas.bringToFront(currImg);
+                        // No bringToFront needed: currImg is naturally above prevImg in the stack
                     }
                 },
                 animate: (tl, currImg, prevImg, duration) => {
@@ -719,7 +731,18 @@
                             selectable: false,
                             evented: false,
                             hoverCursor: 'default',
+                            originX: 'center',
+                            originY: 'center',
                             data: { sceneId: sceneId }
+                        });
+
+                        // Fit to canvas
+                        const scale = Math.min((this.canvas.getWidth() - 100) / img.width, (this.canvas.getHeight() - 100) / img.height);
+                        img.set({
+                            scaleX: scale,
+                            scaleY: scale,
+                            left: this.canvas.getWidth() / 2,
+                            top: this.canvas.getHeight() / 2
                         });
 
                         const newScene = {
@@ -733,8 +756,7 @@
                         this.scenes.push(newScene);
 
                         this.canvas.add(img);
-                        this.canvas.sendToBack(img);
-
+                        // Natural order is correct: Image then its annotations
                         this.switchScene(sceneId);
                     });
                 };
@@ -754,7 +776,7 @@
             }
 
             centerActiveSceneImage() {
-                const activeScene = this.scenes.find(s => s.id === this.activeSceneId);
+                const activeScene = this.scenes.find(s => s.id == this.activeSceneId);
                 if (!activeScene || !activeScene.image) return;
 
                 const img = activeScene.image;
@@ -780,41 +802,54 @@
             }
 
             updateCanvasVisibility() {
+                // console.log('[Debug] updateCanvasVisibility. ActiveScene:', this.activeSceneId, 'ActiveKF:', this.activeKeyframeId);
                 this.canvas.getObjects().forEach(obj => {
                     let objSceneId = null;
+                    let isKeyframeObject = false;
 
                     if (obj.data && obj.data.sceneId) {
                         objSceneId = obj.data.sceneId;
+                        // If it has an 'id' as well, it's a keyframe annotation/text
+                        if (obj.data.id) {
+                            isKeyframeObject = true;
+                        }
                     } else if (obj.data && obj.data.id) {
+                        // Fallback: try to find scene owner
                         for (const s of this.scenes) {
-                            if (s.keyframes.find(k => k.id === obj.data.id)) {
+                            if (s.keyframes.find(k => k.id == obj.data.id)) {
                                 objSceneId = s.id;
+                                isKeyframeObject = true;
                                 break;
                             }
                         }
                     }
 
-                    if (objSceneId && objSceneId !== this.activeSceneId) {
+                    // 1. If part of a scene but NOT the active scene -> Hide
+                    if (objSceneId && objSceneId != this.activeSceneId) {
                         obj.visible = false;
                         obj.selectable = false;
                         obj.evented = false;
                         return;
                     }
 
-                    if (obj.data && obj.data.sceneId) {
-                        obj.visible = true;
-                        // Reset opacity/position in case they were messed up by previous render preview
-                        obj.opacity = 1;
-                        return;
-                    }
-
-                    if (obj.data && obj.data.id) {
-                        if (obj.data.id === this.activeKeyframeId) {
-                            obj.set({ visible: true, opacity: 1 });
-                            obj.set({ selectable: true, evented: true });
+                    // 2. If part of the ACTIVE scene
+                    if (objSceneId) {
+                        if (isKeyframeObject) {
+                            // Annotation / Text
+                            if (obj.data.id == this.activeKeyframeId) {
+                                obj.set({ visible: true, opacity: 1 });
+                                obj.set({ selectable: true, evented: true });
+                                // console.log('  -> Showing Active KF Obj:', obj.data.id);
+                            } else {
+                                obj.set({ visible: false });
+                                obj.set({ selectable: false, evented: false });
+                            }
                         } else {
-                            obj.set({ visible: false });
-                            obj.set({ selectable: false, evented: false });
+                            // Background Image (has sceneId but no kf id)
+                            obj.visible = true;
+                            // Reset opacity in case preview changed it
+                            obj.opacity = 1;
+                            // obj.sendToBack(); // Removed: Avoid reordering scenes incorrectly
                         }
                     }
                 });
@@ -822,7 +857,7 @@
             }
 
             addKeyframe() {
-                const activeScene = this.scenes.find(s => s.id === this.activeSceneId);
+                const activeScene = this.scenes.find(s => s.id == this.activeSceneId);
                 if (!activeScene) {
                     this.showModal('请先添加场景 (上传图片)', 'alert');
                     const btn = document.getElementById('uploadBtn');
@@ -851,7 +886,7 @@
                 this.canvas.add(fabricObj);
 
                 const keyframeId = Date.now();
-                fabricObj.set('data', { ...fabricObj.data, id: keyframeId });
+                fabricObj.set('data', { ...fabricObj.data, id: keyframeId, sceneId: activeScene.id });
 
                 const keyframeData = {
                     id: keyframeId,
@@ -884,13 +919,13 @@
             }
 
             selectKeyframe(sceneId, kfId) {
-                if (sceneId !== this.activeSceneId) {
+                if (sceneId != this.activeSceneId) {
                     this.switchScene(sceneId);
                 }
                 this.activeKeyframeId = kfId;
 
-                const obj = this.canvas.getObjects().find(o => o.data && o.data.id === kfId && o.data.type !== 'text_label');
-                const txt = this.canvas.getObjects().find(o => o.data && o.data.id === kfId && o.data.type === 'text_label');
+                const obj = this.canvas.getObjects().find(o => o.data && o.data.id == kfId && o.data.type !== 'text_label');
+                const txt = this.canvas.getObjects().find(o => o.data && o.data.id == kfId && o.data.type === 'text_label');
 
                 this.renderTimelineUI();
                 this.updateCanvasVisibility();
@@ -902,17 +937,17 @@
             }
 
             deleteKeyframe(sceneId, kfId) {
-                const scene = this.scenes.find(s => s.id === sceneId);
+                const scene = this.scenes.find(s => s.id == sceneId);
                 if (!scene) return;
 
-                const index = scene.keyframes.findIndex(k => k.id === kfId);
+                const index = scene.keyframes.findIndex(k => k.id == kfId);
                 if (index > -1) {
-                    const objects = this.canvas.getObjects().filter(o => o.data && o.data.id === kfId);
+                    const objects = this.canvas.getObjects().filter(o => o.data && o.data.id == kfId);
                     objects.forEach(o => this.canvas.remove(o));
 
                     scene.keyframes.splice(index, 1);
 
-                    if (this.activeKeyframeId === kfId) {
+                    if (this.activeKeyframeId == kfId) {
                         this.activeKeyframeId = null;
                     }
 
@@ -924,12 +959,12 @@
 
             deleteScene(sceneId) {
                 this.showModal("确定要删除整个场景吗？包含所有关键帧。", 'confirm', () => {
-                    const idx = this.scenes.findIndex(s => s.id === sceneId);
+                    const idx = this.scenes.findIndex(s => s.id == sceneId);
                     if (idx > -1) {
                         const scene = this.scenes[idx];
                         this.canvas.remove(scene.image);
                         scene.keyframes.forEach(kf => {
-                            const objects = this.canvas.getObjects().filter(o => o.data && o.data.id === kf.id);
+                            const objects = this.canvas.getObjects().filter(o => o.data && o.data.id == kf.id);
                             objects.forEach(o => this.canvas.remove(o));
                         });
 
@@ -948,7 +983,7 @@
             }
 
             updateSceneTransition(sceneId, type) {
-                const scene = this.scenes.find(s => s.id === sceneId);
+                const scene = this.scenes.find(s => s.id == sceneId);
                 if (scene) {
                     scene.transitionType = type;
                 }
@@ -968,7 +1003,7 @@
                 }
 
                 this.scenes.forEach((scene, sIdx) => {
-                    const isSceneActive = scene.id === this.activeSceneId;
+                    const isSceneActive = scene.id == this.activeSceneId;
 
                     const sceneWrapper = document.createElement('div');
                     sceneWrapper.className = 'mb-2 border border-gray-700 rounded bg-gray-800 overflow-hidden';
@@ -1082,7 +1117,7 @@
             }
 
             createKeyframeUI(scene, kf, index) {
-                const isActive = kf.id === this.activeKeyframeId;
+                const isActive = kf.id == this.activeKeyframeId;
                 const annotLabel = AnnotationRegistry[kf.annotType].label;
                 const camLabel = CameraRegistry[kf.camType].label;
                 const camOptionsKeys = Object.keys(CameraRegistry);
@@ -1220,7 +1255,7 @@
                 let kf = null;
                 let scene = null;
                 for (const s of this.scenes) {
-                    const found = s.keyframes.find(k => k.id === id);
+                    const found = s.keyframes.find(k => k.id == id);
                     if (found) { kf = found; scene = s; break; }
                 }
                 if (!kf) return;
@@ -1241,7 +1276,7 @@
             }
 
             updateCanvasTextObject(id, kf) {
-                const group = this.canvas.getObjects().find(o => o.data && o.data.id === id && o.data.type === 'text_label');
+                const group = this.canvas.getObjects().find(o => o.data && o.data.id == id && o.data.type === 'text_label');
                 if (!group) return;
 
                 const items = group.getObjects();
@@ -1273,21 +1308,29 @@
                 const newH = fontSize + 30 + strokeW;
 
                 bg.set({ width: newW, height: newH });
+
+                // Save current position to lock it
+                const oldPos = { left: group.left, top: group.top };
                 group.addWithUpdate();
+                // Restore position to prevent shift during resize
+                group.set(oldPos);
+                group.setCoords();
+
                 this.canvas.requestRenderAll();
             }
 
             toggleKeyframeText(id, enable) {
                 let kf = null;
+                let activeScene = null;
                 for (const s of this.scenes) {
-                    const found = s.keyframes.find(k => k.id === id);
-                    if (found) { kf = found; break; }
+                    const found = s.keyframes.find(k => k.id == id);
+                    if (found) { kf = found; activeScene = s; break; }
                 }
                 if (!kf) return;
                 kf.hasText = enable;
 
                 if (enable) {
-                    if (this.canvas.getObjects().find(o => o.data && o.data.id === id && o.data.type === 'text_label')) return;
+                    if (this.canvas.getObjects().find(o => o.data && o.data.id == id && o.data.type === 'text_label')) return;
 
                     const textStr = kf.textLabel || '点击输入文字...';
                     const textObj = new fabric.Text(textStr, {
@@ -1320,13 +1363,13 @@
                         cornerColor: '#10B981',
                         borderColor: '#10B981',
                         objectCaching: false,
-                        data: { id: id, type: 'text_label' },
-                        visible: (id === this.activeKeyframeId)
+                        data: { id: id, type: 'text_label', sceneId: activeScene ? activeScene.id : null },
+                        visible: (id == this.activeKeyframeId)
                     });
                     this.canvas.add(textGroup);
                     this.canvas.setActiveObject(textGroup);
                 } else {
-                    const group = this.canvas.getObjects().find(o => o.data && o.data.id === id && o.data.type === 'text_label');
+                    const group = this.canvas.getObjects().find(o => o.data && o.data.id == id && o.data.type === 'text_label');
                     if (group) this.canvas.remove(group);
                 }
                 this.renderTimelineUI();
@@ -1358,7 +1401,7 @@
                 this.scenes.forEach(scene => {
                     scene.keyframes.forEach(kf => {
                         if (kf.isFixed && kf.hasText) {
-                            const sourceObj = this.canvas.getObjects().find(o => o.data && o.data.id === kf.id && o.data.type === 'text_label');
+                            const sourceObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type === 'text_label');
                             if (sourceObj && sourceObj.getObjects) {
                                 // Extract components from the source Group
                                 const srcObjects = sourceObj.getObjects();
@@ -1444,7 +1487,9 @@
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
                     const dpr = this.canvas.getRetinaScaling();
                     if (dpr !== 1) ctx.scale(dpr, dpr);
-                    Object.values(subtitleProxies).forEach(p => p.render(ctx));
+                    Object.values(subtitleProxies).forEach(p => {
+                        if (p && p.opacity > 0) p.render(ctx);
+                    });
                     if (outtroProxy && outtroProxy.opacity > 0) outtroProxy.render(ctx);
                     ctx.restore();
                 };
@@ -1487,7 +1532,12 @@
                         const scale = Math.min((this.canvas.getWidth() - 100) / img.width, (this.canvas.getHeight() - 100) / img.height);
                         // Store scale in data for transitions that might need it
                         img.data.targetScale = scale;
-                        img.set({ scaleX: scale, scaleY: scale, left: this.canvas.getWidth() / 2, top: this.canvas.getHeight() / 2, opacity: 1 });
+                        img.set({
+                            scaleX: scale, scaleY: scale,
+                            left: this.canvas.getWidth() / 2, top: this.canvas.getHeight() / 2,
+                            originX: 'center', originY: 'center',
+                            opacity: 1
+                        });
                         img.setCoords();
 
                         // 2. Setup Previous Scene Image (if transition needed)
@@ -1507,9 +1557,16 @@
 
                         // Show Objects for this scene (hidden initially, fade/pop in later by keyframes)
                         this.canvas.getObjects().forEach(obj => {
-                            if (obj.data && obj.data.id && scene.keyframes.find(k => k.id === obj.data.id)) {
+                            const isSceneAnnotation = obj.data && obj.data.id && scene.keyframes.find(k => k.id == obj.data.id);
+                            const isSceneImage = obj.data && obj.data.sceneId == scene.id && !obj.data.id;
+
+                            if (isSceneAnnotation) {
                                 obj.visible = true;
                                 obj.opacity = 0;
+                                obj.bringToFront(); // Force them to be on top of everything for this scene
+                            } else if (isSceneImage) {
+                                obj.visible = true;
+                                // Opacity handled by image setup above and transition
                             }
                         });
                     });
@@ -1531,8 +1588,8 @@
                     lastCameraProxy = cameraProxy; // Update reference to the latest proxy
 
                     scene.keyframes.forEach(kf => {
-                        const annotObj = this.canvas.getObjects().find(o => o.data && o.data.id === kf.id && o.data.type !== 'text_label');
-                        const spatialText = (!kf.isFixed && kf.hasText) ? this.canvas.getObjects().find(o => o.data && o.data.id === kf.id && o.data.type === 'text_label') : null;
+                        const annotObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type !== 'text_label');
+                        const spatialText = (!kf.isFixed && kf.hasText) ? this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type === 'text_label') : null;
                         const proxyText = (kf.isFixed && kf.hasText) ? subtitleProxies[kf.id] : null;
 
                         if (!annotObj) return;
@@ -1642,6 +1699,76 @@
                 }, 100);
             }
 
+            // --- Project Management ---
+            exportProject() {
+                if (this.scenes.length === 0) {
+                    this.showModal('当前没有场景可保存', 'alert');
+                    return;
+                }
+
+                const projectData = {
+                    version: "1.0",
+                    timestamp: Date.now(),
+                    scenes: this.scenes.map(s => {
+                        return {
+                            id: s.id,
+                            thumbnail: s.thumbnail, // Base64
+                            transitionType: s.transitionType,
+                            imageSrc: s.image.getSrc(), // Base64
+                            keyframes: s.keyframes.map(kf => {
+                                // Use loose equality for ID matching to catch string/number discrepancies from JSON
+                                const annotObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type !== 'text_label');
+                                const annotProps = annotObj ? {
+                                    left: annotObj.left,
+                                    top: annotObj.top,
+                                    scaleX: annotObj.scaleX,
+                                    scaleY: annotObj.scaleY,
+                                    width: annotObj.width,
+                                    height: annotObj.height,
+                                    angle: annotObj.angle
+                                } : null;
+
+                                const textObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type === 'text_label');
+                                const textProps = textObj ? {
+                                    left: textObj.left,
+                                    top: textObj.top,
+                                    scaleX: textObj.scaleX,
+                                    scaleY: textObj.scaleY,
+                                    angle: textObj.angle
+                                } : null;
+
+                                return {
+                                    config: kf,
+                                    annotProps: annotProps,
+                                    textProps: textProps
+                                };
+                            })
+                        };
+                    }),
+                    outtro: {
+                        enabled: document.getElementById('endWithFullView').checked,
+                        text: document.getElementById('outtroText').value,
+                        duration: document.getElementById('outtroDuration').value,
+                        font: document.getElementById('outtroFont').value,
+                        textColor: document.getElementById('outtroTextColor').value,
+                        strokeColor: document.getElementById('outtroStrokeColor').value,
+                        strokeWidth: document.getElementById('outtroStrokeWidth').value,
+                        bgColor: document.getElementById('outtroBgColor').value,
+                        bgOpacity: document.getElementById('outtroBgOpacity').value
+                    }
+                };
+
+                const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `promotion_project_${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+
+
             // --- Custom Modal Helper ---
             showModal(message, type = 'alert', onConfirm = null) {
                 const modal = document.getElementById('customModal');
@@ -1684,6 +1811,279 @@
                 }
 
                 modal.classList.remove('hidden');
+            }
+            // --- Project Management ---
+            exportProject() {
+                if (this.scenes.length === 0) {
+                    this.showModal('当前没有场景可保存', 'alert');
+                    return;
+                }
+
+                const projectData = {
+                    version: "1.0",
+                    timestamp: Date.now(),
+                    scenes: this.scenes.map(s => {
+                        return {
+                            id: s.id,
+                            thumbnail: s.thumbnail, // Base64
+                            transitionType: s.transitionType,
+                            imageSrc: s.image.getSrc(), // Base64
+                            keyframes: s.keyframes.map(kf => {
+                                // Use loose equality for ID matching to handle string/number discrepancies from JSON
+                                const annotObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type !== 'text_label');
+                                const annotProps = annotObj ? {
+                                    left: annotObj.left,
+                                    top: annotObj.top,
+                                    scaleX: annotObj.scaleX,
+                                    scaleY: annotObj.scaleY,
+                                    width: annotObj.width,
+                                    height: annotObj.height,
+                                    angle: annotObj.angle
+                                } : null;
+
+                                const textObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type === 'text_label');
+                                const textProps = textObj ? {
+                                    left: textObj.left,
+                                    top: textObj.top,
+                                    scaleX: textObj.scaleX,
+                                    scaleY: textObj.scaleY,
+                                    angle: textObj.angle
+                                } : null;
+
+                                return {
+                                    config: kf,
+                                    annotProps: annotProps,
+                                    textProps: textProps
+                                };
+                            })
+                        };
+                    }),
+                    outtro: {
+                        enabled: document.getElementById('endWithFullView').checked,
+                        text: document.getElementById('outtroText').value,
+                        duration: document.getElementById('outtroDuration').value,
+                        font: document.getElementById('outtroFont').value,
+                        textColor: document.getElementById('outtroTextColor').value,
+                        strokeColor: document.getElementById('outtroStrokeColor').value,
+                        strokeWidth: document.getElementById('outtroStrokeWidth').value,
+                        bgColor: document.getElementById('outtroBgColor').value,
+                        bgOpacity: document.getElementById('outtroBgOpacity').value
+                    }
+                };
+
+                const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `promotion_project_${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            loadProject(file) {
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (!data.scenes) throw new Error("Invalid project file");
+
+                        // 1. Clear Current State
+                        this.canvas.clear();
+                        this.scenes = [];
+                        this.activeSceneId = null;
+                        this.activeKeyframeId = null;
+
+                        // 2. Restore Outtro Settings
+                        if (data.outtro) {
+                            document.getElementById('endWithFullView').checked = data.outtro.enabled;
+                            document.getElementById('outtroText').value = data.outtro.text || '';
+                            document.getElementById('outtroDuration').value = data.outtro.duration || 3;
+                            document.getElementById('outtroFont').value = data.outtro.font || 'Noto Sans SC';
+                            document.getElementById('outtroTextColor').value = data.outtro.textColor || '#ffffff';
+                            document.getElementById('outtroStrokeColor').value = data.outtro.strokeColor || '#000000';
+                            document.getElementById('outtroStrokeWidth').value = data.outtro.strokeWidth || 4;
+                            document.getElementById('outtroBgColor').value = data.outtro.bgColor || '#000000';
+                            document.getElementById('outtroBgOpacity').value = data.outtro.bgOpacity || 0.8;
+
+                            // Trigger UI update for outtro section
+                            const evt = new Event('change');
+                            document.getElementById('endWithFullView').dispatchEvent(evt);
+                        }
+
+                        // 3. Restore Scenes Sequentially (recursively to handle async image loading)
+                        this.restoreScenesRecursive(data.scenes, 0);
+
+                    } catch (err) {
+                        console.error(err);
+                        this.showModal('无法读取项目文件，格式可能不正确。', 'alert');
+                    }
+                };
+                reader.readAsText(file);
+                // Reset input
+                document.getElementById('projectUpload').value = '';
+            }
+
+            restoreScenesRecursive(sceneDataList, index) {
+                if (index >= sceneDataList.length) {
+                    // Done
+                    if (this.scenes.length > 0) {
+                        this.switchScene(this.scenes[0].id);
+                    }
+                    this.showModal('项目加载成功！', 'alert');
+                    return;
+                }
+
+                const sData = sceneDataList[index];
+                fabric.Image.fromURL(sData.imageSrc, (img) => {
+                    img.set({
+                        selectable: false,
+                        evented: false,
+                        hoverCursor: 'default',
+                        originX: 'center',
+                        originY: 'center',
+                        data: { sceneId: sData.id }
+                    });
+
+                    // Initial fit
+                    const scale = Math.min((this.canvas.getWidth() - 100) / img.width, (this.canvas.getHeight() - 100) / img.height);
+                    img.set({
+                        scaleX: scale,
+                        scaleY: scale,
+                        left: this.canvas.getWidth() / 2,
+                        top: this.canvas.getHeight() / 2
+                    });
+
+                    // Reconstruct Scene Object
+                    const newScene = {
+                        id: sData.id,
+                        image: img,
+                        keyframes: [], // Will fill below
+                        thumbnail: sData.thumbnail,
+                        transitionType: sData.transitionType || 'fade'
+                    };
+
+                    this.canvas.add(img);
+                    // Natural order is correct: Image then its annotations
+
+                    // Reconstruct Keyframes
+                    sData.keyframes.forEach(kfData => {
+                        const config = kfData.config;
+                        const props = kfData.annotProps;
+
+                        // 1. Create Annotation Object
+                        if (props) {
+                            const fabricObj = AnnotationRegistry[config.annotType].create(this.canvas);
+                            fabricObj.set({
+                                left: props.left,
+                                top: props.top,
+                                scaleX: props.scaleX,
+                                scaleY: props.scaleY,
+                                angle: props.angle || 0,
+                                width: props.width,
+                                height: props.height,
+                                originX: 'center',
+                                originY: 'center',
+                                data: { ...fabricObj.data, id: config.id, sceneId: sData.id } // Ensure sceneId is set!
+                            });
+
+                            // Compatibility: If older project, ensure ID exists
+                            if (!config.id) config.id = Date.now() + Math.random();
+                            fabricObj.data.id = config.id;
+
+                            this.canvas.add(fabricObj);
+                        }
+
+                        // 2. Create Text Label (if any)
+                        if (config.hasText) {
+                            const textStr = config.textLabel || 'Text';
+                            const textObj = new fabric.Text(textStr, {
+                                fontSize: 48,
+                                fill: config.textColor || '#FACC15',
+                                fontFamily: config.fontFamily || 'Noto Sans SC',
+                                originX: 'center', originY: 'center'
+                            });
+                            const bgObj = new fabric.Rect({
+                                fill: '#000000', width: 100, height: 50, originX: 'center', originY: 'center'
+                            });
+
+                            const tProps = kfData.textProps || { left: this.canvas.getWidth() / 2, top: (this.canvas.getHeight() / 2) + 100, scaleX: 1, scaleY: 1, angle: 0 };
+
+                            const group = new fabric.Group([bgObj, textObj], {
+                                left: tProps.left,
+                                top: tProps.top,
+                                scaleX: 1, // Start with scale 1 to avoid addWithUpdate confusion
+                                scaleY: 1,
+                                angle: tProps.angle || 0,
+                                originX: 'center', originY: 'center',
+                                visible: false,
+                                data: { id: config.id, type: 'text_label', sceneId: sData.id }
+                            });
+                            this.canvas.add(group);
+
+                            // Now update it with real properties and original scale
+                            this.updateCanvasTextObjectDirect(config, tProps, group);
+                        }
+
+                        newScene.keyframes.push(config);
+                    });
+
+                    this.scenes.push(newScene);
+
+                    // Next
+                    this.restoreScenesRecursive(sceneDataList, index + 1);
+                });
+            }
+
+            // Helper to update text without needing full scene state lookups
+            updateCanvasTextObjectDirect(kf, restoreProps = null, targetGroup = null) {
+                const group = targetGroup || this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type === 'text_label');
+                if (!group) return;
+
+                const items = group.getObjects();
+                const bg = items[0];
+                const text = items[1];
+
+                if (kf.textLabel !== undefined) text.set('text', kf.textLabel);
+                if (kf.textColor !== undefined) text.set('fill', kf.textColor);
+                if (kf.textStrokeColor !== undefined) text.set('stroke', kf.textStrokeColor);
+                if (kf.textStrokeWidth !== undefined) text.set('strokeWidth', parseFloat(kf.textStrokeWidth));
+                if (kf.fontFamily !== undefined) text.set('fontFamily', kf.fontFamily);
+
+                text.set('paintFirst', 'stroke');
+
+                const opacity = kf.textBgOpacity !== undefined ? parseFloat(kf.textBgOpacity) : 0.6;
+                const bgCol = hexToRgba(kf.textBgColor || '#000000', opacity);
+                bg.set('fill', bgCol);
+
+                text.setCoords();
+                const ctx = this.canvas.getContext();
+                ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+                const measure = ctx.measureText(text.text);
+                const strokeW = text.strokeWidth || 0;
+                bg.set({ width: measure.width + 40 + strokeW, height: text.fontSize + 30 + strokeW });
+
+                // Reset scale to 1 before updating to avoid double-scaling or coordinate confusion
+                const oldScale = { x: group.scaleX, y: group.scaleY };
+                group.set({ scaleX: 1, scaleY: 1 });
+                group.addWithUpdate();
+
+                // Explicitly restore position and scale
+                const finalProps = restoreProps || {
+                    left: group.left, top: group.top,
+                    scaleX: oldScale.x, scaleY: oldScale.y,
+                    angle: group.angle
+                };
+
+                group.set({
+                    left: finalProps.left,
+                    top: finalProps.top,
+                    scaleX: finalProps.scaleX,
+                    scaleY: finalProps.scaleY,
+                    angle: finalProps.angle
+                });
+                group.setCoords();
             }
         }
 
