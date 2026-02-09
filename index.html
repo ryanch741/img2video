@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灵动演示工坊 (ProMotion Studio)</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fabric.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;700;900&family=ZCOOL+KuaiLe&display=swap"
+        rel="stylesheet">
+
+
+    <style>
+        /* Custom Scrollbar for Timeline */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        canvas {
+            border: 1px solid #374151;
+        }
+
+        /* Ensure canvas wrapper has height */
+        #canvasWrapper {
+            height: 100%;
+            width: 100%;
+        }
+
+        .bg-grid-pattern {
+            background-image: radial-gradient(#374151 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Active keyframe highlight */
+        .keyframe-item.active {
+            border-color: #3B82F6;
+            /* Blue highlight */
+        }
+
+        /* Scene Header Highlight */
+        .scene-header.active {
+            background-color: #1f2937;
+            border-left: 4px solid #3B82F6;
+        }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
+</head>
+
+<body class="bg-gray-900 text-gray-100 h-screen w-screen overflow-hidden flex flex-col">
+
+    <!-- UI LAYOUT -->
+    <div class="grid grid-cols-12 h-full w-full">
+
+        <!-- Left Sidebar: Controls -->
+        <div class="col-span-3 bg-gray-800 border-r border-gray-700 flex flex-col shadow-xl z-10 h-full max-h-screen">
+            <!-- Header -->
+            <div class="p-4 border-b border-gray-700 bg-gray-900 flex-shrink-0">
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
+                    灵动演示工坊 Pro
+                </h1>
+                <p class="text-xs text-gray-400 mt-1">Extensible Motion Canvas</p>
+            </div>
+
+            <!-- Controls Section (Fixed/Shrinkable) -->
+            <div class="p-4 space-y-4 border-b border-gray-700 bg-gray-800 flex-shrink-0 overflow-y-auto max-h-[40vh]">
+                <!-- 1. Add Scene (Was Upload) -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-300">1. 添加场景 (Scene)</label>
+                    <button id="uploadBtn"
+                        class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-md transition flex items-center justify-center gap-2 text-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
+                            </path>
+                        </svg>
+                        上传图片添加新场景
+                    </button>
+                    <input type="file" id="imgUpload" accept="image/*" class="hidden">
+                </div>
+
+                <!-- 2. Add Keyframe Controls -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-300">2. 添加关键帧 (当前场景)</label>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-xs text-gray-400 block mb-1">标注样式</span>
+                            <select id="annotSelect"
+                                class="w-full bg-gray-700 border-gray-600 text-white rounded-md p-1.5 text-xs focus:ring-2 focus:ring-blue-500 outline-none">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <span class="text-xs text-gray-400 block mb-1">运镜风格</span>
+                            <select id="cameraSelect"
+                                class="w-full bg-gray-700 border-gray-600 text-white rounded-md p-1.5 text-xs focus:ring-2 focus:ring-blue-500 outline-none">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <button id="addKeyframeBtn"
+                        class="w-full py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white rounded-md transition text-sm flex justify-center items-center gap-1">
+                        <span class="text-lg leading-none">+</span> 添加到当前场景
+                    </button>
+                </div>
+            </div>
+
+            <!-- Timeline Section (Flex-Grow, Scrollable) -->
+            <div class="flex-1 flex flex-col min-h-0 bg-gray-800/50">
+                <div
+                    class="flex justify-between items-center px-4 py-2 bg-gray-800 border-b border-gray-700 flex-shrink-0">
+                    <label class="block text-sm font-medium text-gray-300">3. 场景时间轴</label>
+                    <span id="sceneCount" class="text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-300">0 场景</span>
+                </div>
+
+                <div id="timelineContainer" class="flex-1 overflow-y-auto p-2 space-y-2">
+                    <!-- Timeline Items Injected Here -->
+                    <div
+                        class="text-center text-gray-500 text-xs py-8 italic flex flex-col items-center justify-center h-full">
+                        <span>请上传图片开始...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer: Export -->
+            <div class="p-4 bg-gray-900 border-t border-gray-700 flex-shrink-0 z-20">
+                <!-- Outtro Settings Panel -->
+                <div class="bg-gray-800 rounded-lg p-3 mb-3 border border-gray-700 transition-all">
+                    <div class="flex items-center justify-between mb-0">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="endWithFullView"
+                                class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500 focus:ring-offset-gray-900">
+                            <span class="text-xs font-bold text-gray-300 hover:text-white transition">结束时回到全景
+                                (Outtro)</span>
+                        </label>
+                        <button id="toggleOuttroSettings"
+                            class="text-gray-400 hover:text-white p-1 hidden focus:outline-none transition-transform">
+                            <svg id="outtroChevron" class="w-4 h-4 transform transition-transform duration-200"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div id="outtroOptions"
+                        class="hidden pl-4 space-y-2 border-t border-gray-700 pt-2 mt-2 transition-all duration-300 ease-in-out">
+                        <!-- Text Content -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-500 w-12">片尾文字</span>
+                            <input type="text" id="outtroText" placeholder="例如: 谢谢观看"
+                                class="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white placeholder-gray-600">
+                        </div>
+                        <!-- Duration -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-500 w-12">停留时长</span>
+                            <input type="number" id="outtroDuration" value="3.0" step="0.5"
+                                class="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white text-center">
+                            <span class="text-[10px] text-gray-500">秒</span>
+                        </div>
+
+                        <!-- Font Family -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-500 w-12">字体</span>
+                            <select id="outtroFont"
+                                class="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white"></select>
+                        </div>
+
+                        <!-- Colors Row -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="outtroTextColor" value="#FFFFFF"
+                                    class="w-6 h-6 bg-transparent border-0 cursor-pointer rounded overflow-hidden">
+                                <span class="text-xs text-gray-500">文字颜色</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="outtroBgColor" value="#000000"
+                                    class="w-6 h-6 bg-transparent border-0 cursor-pointer rounded overflow-hidden">
+                                <span class="text-xs text-gray-500">背景颜色</span>
+                            </div>
+                        </div>
+
+                        <!-- Stroke Row -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-500 w-12">描边</span>
+                            <input type="color" id="outtroStrokeColor" value="#000000"
+                                class="w-5 h-5 bg-transparent border-0 cursor-pointer rounded overflow-hidden flex-shrink-0">
+                            <input type="range" id="outtroStrokeWidth" min="0" max="10" step="0.5" value="4"
+                                class="flex-1 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                        </div>
+
+                        <!-- Opacity -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-gray-500 w-12">背景透明</span>
+                            <input type="range" id="outtroBgOpacity" min="0" max="1" step="0.1" value="0.7"
+                                class="flex-1 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <button id="exportBtn"
+                    class="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg shadow-lg transform hover:scale-[1.02] transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    生成演示视频
+                </button>
+            </div>
+        </div>
+
+        <!-- Right: Canvas Area -->
+        <div class="col-span-9 bg-gray-950 relative flex flex-col h-full overflow-hidden">
+            <!-- Hint Bar -->
+            <div
+                class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur-sm px-4 py-1 rounded-full text-xs text-gray-300 border border-white/10 z-20 pointer-events-none select-none">
+                💡 提示: 切换场景可编辑不同底图。第二个场景起可设置转场动画。
+            </div>
+
+            <!-- Canvas Wrapper -->
+            <div id="canvasWrapper"
+                class="flex-1 flex items-center justify-center overflow-hidden w-full h-full p-8 bg-grid-pattern">
+                <canvas id="mainCanvas"></canvas>
+            </div>
+
+            <!-- Loading Overlay -->
+            <div id="processingOverlay"
+                class="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center hidden">
+                <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+                <h2 class="text-xl font-bold text-white">正在渲染视频...</h2>
+                <p class="text-gray-400 text-sm mt-2">请勿切换窗口 (渲染多场景中)</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Custom Modal Overlay -->
+    <div id="customModal"
+        class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div
+            class="bg-gray-800 border border-gray-700 rounded-lg shadow-2xl w-96 p-6 transform transition-all scale-100">
+            <h3 id="modalTitle" class="text-lg font-bold text-white mb-2">提示</h3>
+            <p id="modalMessage" class="text-gray-300 text-sm mb-6 leading-relaxed">Message content...</p>
+            <div class="flex justify-end gap-3">
+                <button id="modalCancelBtn"
+                    class="px-4 py-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 text-sm transition hidden border border-gray-600">取消</button>
+                <button id="modalConfirmBtn"
+                    class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-lg transition">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APPLICATION SCRIPT -->
+    <script>
+        // --- Helper: Hex + Opacity to RGBA ---
+        function hexToRgba(hex, opacity) {
+            let c = hex.replace('#', '');
+            if (c.length === 3) {
+                c = c.split('').map(char => char + char).join('');
+            }
+            const r = parseInt(c.substring(0, 2), 16);
+            const g = parseInt(c.substring(2, 4), 16);
+            const b = parseInt(c.substring(4, 6), 16);
+            return `rgba(${r},${g},${b},${opacity})`;
+        }
+
+        // --- Font Registry ---
+        const FontRegistry = {
+            'Noto Sans SC': '标准黑体 (Web)',
+            'Ma Shan Zheng': '毛笔书法 (Web)',
+            'ZCOOL KuaiLe': '快乐酷黑 (Web)',
+            'Microsoft YaHei': '微软雅黑 (系统)',
+            'SimHei': '纯黑体 (系统)',
+            'KaiTi': '楷体 (系统)',
+            'SimSun': '宋体 (系统)',
+            'Arial': 'Arial (英)',
+            'Verdana': 'Verdana (英)',
+            'Times New Roman': 'Times New Roman (英)',
+            'Inter': '默认 (System)'
+        };
+
+        // --- 1. Annotation Registry (Visual Styles) ---
+        const AnnotationRegistry = {
+            'hand_box_simple': {
+                label: '手绘方框',
+                create: (canvas) => {
+                    const pathData = "M 2 2 L 198 4 L 196 148 L 4 146 Z";
+                    return new fabric.Path(pathData, {
+                        fill: 'transparent',
+                        stroke: '#EF4444',
+                        strokeWidth: 4,
+                        strokeLineCap: 'round',
+                        strokeLineJoin: 'round',
+                        scaleX: 1, scaleY: 1,
+                        objectCaching: false,
+                        data: { type: 'hand_box_simple' }
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    const len = 1000;
+                    const sub = gsap.timeline({ repeat: repeat - 1 });
+                    sub.set(obj, { opacity: 1, strokeDashArray: [len, len], strokeDashOffset: len });
+                    sub.to(obj, { strokeDashOffset: 0, duration: duration, ease: "power2.out" });
+                    tl.add(sub, label);
+                }
+            },
+            'hand_circle_messy': {
+                label: '缭乱红圈',
+                create: (canvas) => {
+                    const d = "M100,20 C140,15 190,40 195,90 C200,150 150,190 90,195 C40,200 10,150 15,90 C20,40 80,10 100,20 C150,30 190,80 185,130";
+                    return new fabric.Path(d, {
+                        fill: 'transparent',
+                        stroke: '#DC2626',
+                        strokeWidth: 3,
+                        strokeLineCap: 'round',
+                        scaleX: 1, scaleY: 1,
+                        objectCaching: false,
+                        data: { type: 'hand_circle_messy' }
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    const len = 1500;
+                    const sub = gsap.timeline({ repeat: repeat - 1 });
+                    sub.set(obj, { opacity: 1, strokeDashArray: [len, len], strokeDashOffset: len });
+                    sub.to(obj, { strokeDashOffset: 0, duration: duration, ease: "power1.inOut" });
+                    sub.to(obj, { scaleX: obj.scaleX * 1.05, scaleY: obj.scaleY * 1.05, duration: 0.2, yoyo: true, repeat: 1 }, "-=50%");
+                    tl.add(sub, label);
+                }
+            },
+            'highlight_marker': {
+                label: '荧光笔高亮',
+                create: (canvas) => {
+                    return new fabric.Rect({
+                        width: 200, height: 40,
+                        fill: 'rgba(253, 224, 71, 0.6)',
+                        rx: 5, ry: 5,
+                        originX: 'center', originY: 'center',
+                        data: { type: 'highlight_marker' },
+                        scaleX: 1
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    const sub = gsap.timeline({ repeat: repeat - 1 });
+                    sub.set(obj, { scaleX: 0, opacity: 0 });
+                    sub.to(obj, { scaleX: 1, opacity: 0.6, duration: duration, ease: "power2.out" });
+                    tl.add(sub, label);
+                }
+            },
+            'highlight_wave': {
+                label: '波浪下划线',
+                create: (canvas) => {
+                    const d = "M 0 10 Q 10 0 20 10 T 40 10 T 60 10 T 80 10 T 100 10 T 120 10 T 140 10 T 160 10 T 180 10 T 200 10";
+                    return new fabric.Path(d, {
+                        fill: 'transparent',
+                        stroke: '#EF4444',
+                        strokeWidth: 4,
+                        strokeLineCap: 'round',
+                        objectCaching: false,
+                        data: { type: 'highlight_wave' },
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    const len = 1000;
+                    const sub = gsap.timeline({ repeat: repeat - 1 });
+                    sub.set(obj, { opacity: 1, strokeDashArray: [len, len], strokeDashOffset: len });
+                    sub.to(obj, { strokeDashOffset: 0, duration: duration, ease: "linear" });
+                    tl.add(sub, label);
+                }
+            },
+            'spotlight_focus': {
+                label: '聚光灯聚焦',
+                create: (canvas) => {
+                    return new fabric.Circle({
+                        radius: 80,
+                        fill: 'rgba(255,255,255,0.1)',
+                        stroke: '#ffffff',
+                        strokeWidth: 2,
+                        strokeDashArray: [10, 5],
+                        data: { type: 'spotlight_focus' }
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    const objCenter = obj.getCenterPoint();
+                    const overlay = new fabric.Rect({
+                        left: -10000, top: -10000, width: 50000, height: 50000,
+                        fill: 'rgba(0,0,0,0.7)',
+                        selectable: false, evented: false
+                    });
+
+                    tl.call(() => {
+                        const hole = new fabric.Circle({
+                            left: objCenter.x, top: objCenter.y,
+                            radius: obj.radius * obj.scaleX,
+                            originX: 'center', originY: 'center'
+                        });
+                        hole.inverted = true;
+                        overlay.clipPath = hole;
+                        obj.canvas.add(overlay);
+                        obj.canvas.bringToFront(overlay);
+                    }, null, label);
+
+                    tl.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: duration }, label);
+                    return overlay;
+                }
+            },
+            'invisible_frame': {
+                label: '隐形框 (纯运镜)',
+                create: (canvas) => {
+                    return new fabric.Rect({
+                        width: 200, height: 150,
+                        fill: 'transparent',
+                        stroke: '#9CA3AF',
+                        strokeWidth: 2,
+                        strokeDashArray: [10, 5],
+                        transparentCorners: false,
+                        cornerColor: '#3B82F6',
+                        borderColor: '#3B82F6',
+                        objectCaching: false,
+                        data: { type: 'invisible_frame' }
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                }
+            }
+        };
+
+        // --- 2. Camera Registry (Movement Styles) ---
+        const CameraRegistry = {
+            'instant_cut': { label: '硬切 (Instant)', ease: 'none', durationMult: 0.01 },
+            'smooth_linear': { label: '线性匀速 (Linear)', ease: 'none', durationMult: 1 },
+            'slow_pan': { label: '标准推拉 (Standard)', ease: 'power1.inOut', durationMult: 1 },
+            'elastic_jump': { label: 'Q弹跳跃 (Elastic)', ease: 'back.out(1.7)', durationMult: 1 },
+            'cinematic_drama': { label: '电影感 (Cinematic)', ease: 'expo.inOut', durationMult: 1.2 },
+            'fast_approach': { label: '急速缓冲 (Fast)', ease: 'power4.out', durationMult: 0.8 }
+        };
+
+        // --- 3. Transition Registry (Scene Transitions) ---
+        const TransitionRegistry = {
+            'none': {
+                label: '无 (硬切)',
+                setup: (canvas, currImg, prevImg) => {
+                    currImg.opacity = 1;
+                    currImg.left = canvas.getWidth() / 2;
+                    currImg.top = canvas.getHeight() / 2;
+                    if (prevImg) prevImg.opacity = 0;
+                },
+                animate: (tl, currImg, prevImg, duration) => {
+                    tl.set({}, {}, "+=0.1");
+                }
+            },
+            'fade': {
+                label: '淡入淡出 (Fade)',
+                setup: (canvas, currImg, prevImg) => {
+                    currImg.opacity = 0;
+                    currImg.left = canvas.getWidth() / 2;
+                    currImg.top = canvas.getHeight() / 2;
+                    if (prevImg) {
+                        prevImg.opacity = 1;
+                        canvas.bringToFront(currImg);
+                    }
+                },
+                animate: (tl, currImg, prevImg, duration) => {
+                    tl.to(currImg, { opacity: 1, duration: duration });
+                    if (prevImg) tl.to(prevImg, { opacity: 0, duration: duration }, "<");
+                }
+            },
+            'slide_left': {
+                label: '向左推入 (Slide Left)',
+                setup: (canvas, currImg, prevImg) => {
+                    const w = canvas.getWidth();
+                    currImg.opacity = 1;
+                    currImg.left = w * 1.5;
+                    currImg.top = canvas.getHeight() / 2;
+                    if (prevImg) {
+                        prevImg.opacity = 1;
+                        prevImg.left = w / 2;
+                    }
+                },
+                animate: (tl, currImg, prevImg, duration) => {
+                    const w = currImg.canvas.getWidth();
+                    tl.to(currImg, { left: w / 2, ease: "power2.inOut", duration: duration });
+                    if (prevImg) tl.to(prevImg, { left: -w / 2, ease: "power2.inOut", duration: duration }, "<");
+                }
+            },
+            'slide_up': {
+                label: '向上推入 (Slide Up)',
+                setup: (canvas, currImg, prevImg) => {
+                    const h = canvas.getHeight();
+                    currImg.opacity = 1;
+                    currImg.left = canvas.getWidth() / 2;
+                    currImg.top = h * 1.5;
+                    if (prevImg) {
+                        prevImg.opacity = 1;
+                        prevImg.top = h / 2;
+                    }
+                },
+                animate: (tl, currImg, prevImg, duration) => {
+                    const h = currImg.canvas.getHeight();
+                    tl.to(currImg, { top: h / 2, ease: "power2.inOut", duration: duration });
+                    if (prevImg) tl.to(prevImg, { top: -h / 2, ease: "power2.inOut", duration: duration }, "<");
+                }
+            },
+            'zoom_in_trans': {
+                label: '穿梭放大 (Zoom In)',
+                setup: (canvas, currImg, prevImg) => {
+                    currImg.opacity = 0;
+                    currImg.scaleX = 0.1;
+                    currImg.scaleY = 0.1;
+                    currImg.left = canvas.getWidth() / 2;
+                    currImg.top = canvas.getHeight() / 2;
+
+                    currImg.data.targetScale = Math.min((canvas.getWidth() - 100) / currImg.width, (canvas.getHeight() - 100) / currImg.height);
+
+                    if (prevImg) {
+                        prevImg.opacity = 1;
+                    }
+                },
+                animate: (tl, currImg, prevImg, duration) => {
+                    const targetScale = currImg.data.targetScale || 1;
+                    tl.to(currImg, { opacity: 1, scaleX: targetScale, scaleY: targetScale, duration: duration, ease: "back.out(1.2)" });
+                    if (prevImg) tl.to(prevImg, { opacity: 0, scaleX: prevImg.scaleX * 2, scaleY: prevImg.scaleY * 2, duration: duration, ease: "power1.in" }, "<");
+                }
+            }
+        };
+
+        // --- Main Application Class ---
+        class ProMotionApp {
+            constructor() {
+                window.app = this; // Bind global app immediately
+                this.canvas = null;
+                this.scenes = []; // Array of { id, image, keyframes: [], thumbnail: string, transitionType: string }
+                this.activeSceneId = null;
+                this.activeKeyframeId = null;
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+
+                this.initUI();
+                this.initCanvas();
+                this.bindEvents();
+            }
+
+            initUI() {
+                const annotSelect = document.getElementById('annotSelect');
+                const camSelect = document.getElementById('cameraSelect');
+                const outtroFont = document.getElementById('outtroFont');
+
+                if (annotSelect) {
+                    Object.keys(AnnotationRegistry).forEach(key => {
+                        const opt = document.createElement('option');
+                        opt.value = key;
+                        opt.textContent = AnnotationRegistry[key].label;
+                        annotSelect.appendChild(opt);
+                    });
+                }
+
+                if (camSelect) {
+                    Object.keys(CameraRegistry).forEach(key => {
+                        const opt = document.createElement('option');
+                        opt.value = key;
+                        opt.textContent = CameraRegistry[key].label;
+                        if (key === 'slow_pan') opt.selected = true;
+                        camSelect.appendChild(opt);
+                    });
+                }
+
+                if (outtroFont) {
+                    Object.keys(FontRegistry).forEach(key => {
+                        const opt = document.createElement('option');
+                        opt.value = key;
+                        opt.textContent = FontRegistry[key];
+                        outtroFont.appendChild(opt);
+                    });
+                }
+            }
+
+            initCanvas() {
+                this.canvas = new fabric.Canvas('mainCanvas', {
+                    backgroundColor: '#111827',
+                    selection: true,
+                    preserveObjectStacking: true
+                });
+
+                const wrapper = document.getElementById('canvasWrapper');
+                if (wrapper) {
+                    this.canvas.setWidth(wrapper.clientWidth);
+                    this.canvas.setHeight(wrapper.clientHeight);
+
+                    window.addEventListener('resize', () => {
+                        this.canvas.setWidth(wrapper.clientWidth);
+                        this.canvas.setHeight(wrapper.clientHeight);
+                        this.centerActiveSceneImage();
+                    });
+                }
+            }
+
+            bindEvents() {
+                const uploadInput = document.getElementById('imgUpload');
+                const uploadBtn = document.getElementById('uploadBtn');
+                const addKfBtn = document.getElementById('addKeyframeBtn');
+                const exportBtn = document.getElementById('exportBtn');
+                const outtroCheck = document.getElementById('endWithFullView');
+
+                if (uploadBtn && uploadInput) {
+                    uploadBtn.addEventListener('click', () => {
+                        uploadInput.value = ''; // Reset to allow same file selection
+                        uploadInput.click();
+                    });
+                    uploadInput.addEventListener('change', (e) => this.handleImageUpload(e));
+                }
+
+                if (addKfBtn) addKfBtn.addEventListener('click', () => this.addKeyframe());
+                if (exportBtn) exportBtn.addEventListener('click', () => this.generateVideo());
+
+                // --- Outtro Collapsible Logic ---
+                if (outtroCheck) {
+                    const toggleBtn = document.getElementById('toggleOuttroSettings');
+                    const options = document.getElementById('outtroOptions');
+                    const chevron = document.getElementById('outtroChevron');
+
+                    if (toggleBtn && options && chevron) {
+                        outtroCheck.addEventListener('change', (e) => {
+                            if (e.target.checked) {
+                                options.classList.remove('hidden');
+                                toggleBtn.classList.remove('hidden');
+                                chevron.classList.add('rotate-180');
+                            } else {
+                                options.classList.add('hidden');
+                                toggleBtn.classList.add('hidden');
+                                chevron.classList.remove('rotate-180');
+                            }
+                        });
+
+                        toggleBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const isHidden = options.classList.contains('hidden');
+                            if (isHidden) {
+                                options.classList.remove('hidden');
+                                chevron.classList.add('rotate-180');
+                            } else {
+                                options.classList.add('hidden');
+                                chevron.classList.remove('rotate-180');
+                            }
+                        });
+                    }
+                }
+
+                // Modal Close on Background Click (Optional)
+                const modal = document.getElementById('customModal');
+                if (modal) {
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) modal.classList.add('hidden');
+                    });
+                }
+
+                this.canvas.on('selection:created', () => this.handleCanvasObjectSelection());
+                this.canvas.on('selection:updated', () => this.handleCanvasObjectSelection());
+                this.canvas.on('selection:cleared', () => this.handleCanvasObjectSelection());
+            }
+
+            handleCanvasObjectSelection() {
+                const activeObject = this.canvas.getActiveObject();
+                if (activeObject && activeObject.data && activeObject.data.id) {
+                    this.activeKeyframeId = activeObject.data.id;
+                } else {
+                    this.activeKeyframeId = null;
+                }
+                this.renderTimelineUI();
+                this.updateCanvasVisibility();
+            }
+
+            handleImageUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (f) => {
+                    const imgDataUrl = f.target.result;
+                    fabric.Image.fromURL(imgDataUrl, (img) => {
+                        const sceneId = Date.now();
+
+                        img.set({
+                            selectable: false,
+                            evented: false,
+                            hoverCursor: 'default',
+                            data: { sceneId: sceneId }
+                        });
+
+                        const newScene = {
+                            id: sceneId,
+                            image: img,
+                            keyframes: [],
+                            thumbnail: imgDataUrl,
+                            transitionType: 'fade' // Default transition
+                        };
+
+                        this.scenes.push(newScene);
+
+                        this.canvas.add(img);
+                        this.canvas.sendToBack(img);
+
+                        this.switchScene(sceneId);
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+
+            switchScene(sceneId) {
+                this.activeSceneId = sceneId;
+                this.activeKeyframeId = null;
+                this.canvas.discardActiveObject();
+
+                this.updateCanvasVisibility();
+
+                this.centerActiveSceneImage();
+                this.renderTimelineUI();
+                this.canvas.requestRenderAll();
+            }
+
+            centerActiveSceneImage() {
+                const activeScene = this.scenes.find(s => s.id === this.activeSceneId);
+                if (!activeScene || !activeScene.image) return;
+
+                const img = activeScene.image;
+                const padding = 50;
+                const availableW = this.canvas.getWidth() - padding * 2;
+                const availableH = this.canvas.getHeight() - padding * 2;
+
+                const scale = Math.min(
+                    availableW / img.width,
+                    availableH / img.height
+                );
+
+                img.set({
+                    scaleX: scale,
+                    scaleY: scale,
+                    left: this.canvas.getWidth() / 2,
+                    top: this.canvas.getHeight() / 2,
+                    originX: 'center',
+                    originY: 'center'
+                });
+                img.setCoords();
+                this.canvas.requestRenderAll();
+            }
+
+            updateCanvasVisibility() {
+                this.canvas.getObjects().forEach(obj => {
+                    let objSceneId = null;
+
+                    if (obj.data && obj.data.sceneId) {
+                        objSceneId = obj.data.sceneId;
+                    } else if (obj.data && obj.data.id) {
+                        for (const s of this.scenes) {
+                            if (s.keyframes.find(k => k.id === obj.data.id)) {
+                                objSceneId = s.id;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (objSceneId && objSceneId !== this.activeSceneId) {
+                        obj.visible = false;
+                        obj.selectable = false;
+                        obj.evented = false;
+                        return;
+                    }
+
+                    if (obj.data && obj.data.sceneId) {
+                        obj.visible = true;
+                        // Reset opacity/position in case they were messed up by previous render preview
+                        obj.opacity = 1;
+                        return;
+                    }
+
+                    if (obj.data && obj.data.id) {
+                        if (obj.data.id === this.activeKeyframeId) {
+                            obj.set({ visible: true, opacity: 1 });
+                            obj.set({ selectable: true, evented: true });
+                        } else {
+                            obj.set({ visible: false });
+                            obj.set({ selectable: false, evented: false });
+                        }
+                    }
+                });
+                this.canvas.requestRenderAll();
+            }
+
+            addKeyframe() {
+                const activeScene = this.scenes.find(s => s.id === this.activeSceneId);
+                if (!activeScene) {
+                    this.showModal('请先添加场景 (上传图片)', 'alert');
+                    const btn = document.getElementById('uploadBtn');
+                    if (btn) {
+                        const oldClass = btn.className;
+                        btn.className += " animate-pulse bg-red-600";
+                        setTimeout(() => btn.className = oldClass, 1000);
+                    }
+                    return;
+                }
+
+                const annotSelect = document.getElementById('annotSelect');
+                const camSelect = document.getElementById('cameraSelect');
+
+                const annotType = annotSelect.value;
+                const camType = camSelect.value;
+                const center = { x: this.canvas.getWidth() / 2, y: this.canvas.getHeight() / 2 };
+
+                const fabricObj = AnnotationRegistry[annotType].create(this.canvas);
+                fabricObj.set({
+                    left: center.x,
+                    top: center.y,
+                    originX: 'center',
+                    originY: 'center'
+                });
+                this.canvas.add(fabricObj);
+
+                const keyframeId = Date.now();
+                fabricObj.set('data', { ...fabricObj.data, id: keyframeId });
+
+                const keyframeData = {
+                    id: keyframeId,
+                    annotType: annotType,
+                    camType: camType,
+                    duration: 1.5,
+                    hold: 1.0,
+                    annotDuration: 1.5,
+                    repeatCount: 1,
+                    resetFirst: false,
+                    resetCamType: 'slow_pan',
+                    resetHold: 1.0,
+                    hasText: false,
+                    isFixed: false,
+                    textLabel: '点击输入文字...',
+                    textColor: '#FACC15',
+                    textStrokeColor: '#000000',
+                    textStrokeWidth: 4,
+                    textBgColor: '#000000',
+                    textBgOpacity: 0.6,
+                    fontFamily: 'Noto Sans SC'
+                };
+
+                activeScene.keyframes.push(keyframeData);
+                this.activeKeyframeId = keyframeId;
+
+                this.renderTimelineUI();
+                this.updateCanvasVisibility();
+                this.canvas.setActiveObject(fabricObj);
+            }
+
+            selectKeyframe(sceneId, kfId) {
+                if (sceneId !== this.activeSceneId) {
+                    this.switchScene(sceneId);
+                }
+                this.activeKeyframeId = kfId;
+
+                const obj = this.canvas.getObjects().find(o => o.data && o.data.id === kfId && o.data.type !== 'text_label');
+                const txt = this.canvas.getObjects().find(o => o.data && o.data.id === kfId && o.data.type === 'text_label');
+
+                this.renderTimelineUI();
+                this.updateCanvasVisibility();
+
+                if (obj) this.canvas.setActiveObject(obj);
+                else if (txt) this.canvas.setActiveObject(txt);
+
+                this.canvas.requestRenderAll();
+            }
+
+            deleteKeyframe(sceneId, kfId) {
+                const scene = this.scenes.find(s => s.id === sceneId);
+                if (!scene) return;
+
+                const index = scene.keyframes.findIndex(k => k.id === kfId);
+                if (index > -1) {
+                    const objects = this.canvas.getObjects().filter(o => o.data && o.data.id === kfId);
+                    objects.forEach(o => this.canvas.remove(o));
+
+                    scene.keyframes.splice(index, 1);
+
+                    if (this.activeKeyframeId === kfId) {
+                        this.activeKeyframeId = null;
+                    }
+
+                    this.renderTimelineUI();
+                    this.updateCanvasVisibility();
+                    this.canvas.requestRenderAll();
+                }
+            }
+
+            deleteScene(sceneId) {
+                this.showModal("确定要删除整个场景吗？包含所有关键帧。", 'confirm', () => {
+                    const idx = this.scenes.findIndex(s => s.id === sceneId);
+                    if (idx > -1) {
+                        const scene = this.scenes[idx];
+                        this.canvas.remove(scene.image);
+                        scene.keyframes.forEach(kf => {
+                            const objects = this.canvas.getObjects().filter(o => o.data && o.data.id === kf.id);
+                            objects.forEach(o => this.canvas.remove(o));
+                        });
+
+                        this.scenes.splice(idx, 1);
+
+                        if (this.scenes.length > 0) {
+                            this.switchScene(this.scenes[Math.max(0, idx - 1)].id);
+                        } else {
+                            this.activeSceneId = null;
+                            this.activeKeyframeId = null;
+                            this.renderTimelineUI();
+                            this.canvas.requestRenderAll();
+                        }
+                    }
+                });
+            }
+
+            updateSceneTransition(sceneId, type) {
+                const scene = this.scenes.find(s => s.id === sceneId);
+                if (scene) {
+                    scene.transitionType = type;
+                }
+            }
+
+            renderTimelineUI() {
+                const container = document.getElementById('timelineContainer');
+                const countLabel = document.getElementById('sceneCount');
+                if (!container || !countLabel) return;
+
+                container.innerHTML = '';
+                countLabel.textContent = `${this.scenes.length} 场景`;
+
+                if (this.scenes.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-500 text-xs py-8 italic"><span>请添加场景...</span></div>';
+                    return;
+                }
+
+                this.scenes.forEach((scene, sIdx) => {
+                    const isSceneActive = scene.id === this.activeSceneId;
+
+                    const sceneWrapper = document.createElement('div');
+                    sceneWrapper.className = 'mb-2 border border-gray-700 rounded bg-gray-800 overflow-hidden';
+
+                    // --- Header Construction via DOM API (Fixes Event Issues) ---
+                    const header = document.createElement('div');
+                    header.className = `scene-header flex flex-col p-2 cursor-pointer transition ${isSceneActive ? 'active' : 'bg-gray-800 hover:bg-gray-700'}`;
+
+                    const topRow = document.createElement('div');
+                    topRow.className = "flex justify-between items-center w-full";
+
+                    // Left: Thumb + Info
+                    const leftDiv = document.createElement('div');
+                    leftDiv.className = "flex items-center gap-3";
+
+                    const thumb = document.createElement('img');
+                    thumb.src = scene.thumbnail;
+                    thumb.className = "w-8 h-8 object-cover rounded border border-gray-600";
+
+                    const titleSpan = document.createElement('span');
+                    titleSpan.className = "text-sm font-bold text-gray-200";
+                    titleSpan.textContent = `场景 ${sIdx + 1}`;
+
+                    const countSpan = document.createElement('span');
+                    countSpan.className = "text-xs text-gray-500";
+                    countSpan.textContent = `(${scene.keyframes.length} 帧)`;
+
+                    leftDiv.appendChild(thumb);
+                    leftDiv.appendChild(titleSpan);
+                    leftDiv.appendChild(countSpan);
+
+                    // Right: Controls
+                    const rightDiv = document.createElement('div');
+                    rightDiv.className = "flex items-center gap-2";
+
+                    const toggleIcon = document.createElement('span');
+                    toggleIcon.className = `text-gray-500 transform transition-transform ${isSceneActive ? 'rotate-180' : ''}`;
+                    toggleIcon.textContent = '▼';
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = "text-gray-500 hover:text-red-400 p-1 hover:bg-gray-700 rounded transition flex items-center justify-center";
+                    delBtn.title = "删除场景";
+                    delBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+
+                    // Bind Events Directly to Elements
+                    header.onclick = () => this.switchScene(scene.id);
+
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation(); // Stop switchScene from firing
+                        this.deleteScene(scene.id);
+                    };
+
+                    rightDiv.appendChild(toggleIcon);
+                    rightDiv.appendChild(delBtn);
+
+                    topRow.appendChild(leftDiv);
+                    topRow.appendChild(rightDiv);
+                    header.appendChild(topRow);
+
+                    // Transition Selector (if active and not first)
+                    if (sIdx > 0 && isSceneActive) {
+                        const transRow = document.createElement('div');
+                        transRow.className = "mt-2 pt-2 border-t border-gray-700 w-full";
+                        transRow.onclick = (e) => e.stopPropagation();
+
+                        const transInner = document.createElement('div');
+                        transInner.className = "flex items-center gap-2 text-xs";
+
+                        const tLabel = document.createElement('span');
+                        tLabel.className = "text-blue-400 font-bold";
+                        tLabel.textContent = "↻ 进场效果:";
+
+                        const tSelect = document.createElement('select');
+                        tSelect.className = "bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white flex-1";
+
+                        Object.keys(TransitionRegistry).forEach(k => {
+                            const opt = document.createElement('option');
+                            opt.value = k;
+                            opt.textContent = TransitionRegistry[k].label;
+                            if (scene.transitionType === k) opt.selected = true;
+                            tSelect.appendChild(opt);
+                        });
+
+                        tSelect.onchange = (e) => this.updateSceneTransition(scene.id, e.target.value);
+
+                        transInner.appendChild(tLabel);
+                        transInner.appendChild(tSelect);
+                        transRow.appendChild(transInner);
+                        header.appendChild(transRow);
+                    }
+
+                    sceneWrapper.appendChild(header);
+
+                    // Keyframes Body
+                    if (isSceneActive) {
+                        const body = document.createElement('div');
+                        body.className = 'bg-gray-900/30 p-2 space-y-2 border-t border-gray-700';
+
+                        if (scene.keyframes.length === 0) {
+                            body.innerHTML = '<div class="text-center text-xs text-gray-600 py-2">暂无关键帧，请点击上方添加</div>';
+                        } else {
+                            scene.keyframes.forEach((kf, kfIdx) => {
+                                body.appendChild(this.createKeyframeUI(scene, kf, kfIdx));
+                            });
+                        }
+                        sceneWrapper.appendChild(body);
+                    }
+
+                    container.appendChild(sceneWrapper);
+                });
+            }
+
+            createKeyframeUI(scene, kf, index) {
+                const isActive = kf.id === this.activeKeyframeId;
+                const annotLabel = AnnotationRegistry[kf.annotType].label;
+                const camLabel = CameraRegistry[kf.camType].label;
+                const camOptionsKeys = Object.keys(CameraRegistry);
+
+                const div = document.createElement('div');
+                div.className = `bg-gray-800 border border-gray-700 rounded overflow-hidden relative group cursor-pointer keyframe-item ${isActive ? 'active' : ''}`;
+                div.setAttribute('data-keyframe-id', kf.id);
+
+                const header = `
+                <div class="flex justify-between items-center p-2 cursor-pointer bg-gray-800 hover:bg-gray-750 transition border-b border-gray-700 ${isActive ? 'bg-gray-750' : ''}"
+                     onclick="window.app.selectKeyframe(${scene.id}, ${kf.id})">
+                    <div class="flex items-center gap-2">
+                        <span class="transform transition-transform duration-200 text-gray-400 ${isActive ? 'rotate-90 text-blue-400' : ''} text-xs">▶</span>
+                        <span class="font-bold text-xs ${isActive ? 'text-blue-400' : 'text-gray-300'}">#${index + 1} ${annotLabel}</span>
+                    </div>
+                    <button class="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition p-1"
+                            onclick="event.stopPropagation(); window.app.deleteKeyframe(${scene.id}, ${kf.id})">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            `;
+
+                const resetOptions = camOptionsKeys.map(key => `<option value="${key}" ${kf.resetCamType === key ? 'selected' : ''}>${CameraRegistry[key].label}</option>`).join('');
+
+                const isFirst = index === 0;
+                const labelDirect = isFirst ? '立即出发 (Start)' : '直接推进 (Direct)';
+                const labelReset = isFirst ? '开场停留 (Pause)' : '先回全景 (Reset)';
+
+                let textHtml = '';
+                if (!kf.hasText) {
+                    textHtml = `<div class="pt-2 border-t border-gray-700 mt-2 mb-2"><button class="w-full py-1.5 border border-dashed border-gray-600 rounded text-gray-400 hover:text-white text-[10px]" onclick="event.stopPropagation(); window.app.toggleKeyframeText(${kf.id}, true)">➕ 添加解说文字</button></div>`;
+                } else {
+                    const fixedChecked = kf.isFixed ? 'checked' : '';
+                    const fonts = Object.keys(FontRegistry).map(k => `<option value="${k}" ${kf.fontFamily === k ? 'selected' : ''}>${FontRegistry[k]}</option>`).join('');
+
+                    textHtml = `
+                    <div class="pt-2 border-t border-gray-700 mt-2">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] text-gray-400 font-bold">📝 文字解说</label>
+                            <button class="text-[10px] text-red-400 hover:text-red-300" onclick="event.stopPropagation(); window.app.toggleKeyframeText(${kf.id}, false)">删除</button>
+                        </div>
+                        <input type="text" value="${kf.textLabel}" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-[10px] text-white mb-2" onchange="window.app.updateKeyframe(${kf.id}, 'textLabel', this.value)" onclick="event.stopPropagation();">
+                        
+                        <div class="mb-2">
+                             <select class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-[10px] text-white" onchange="window.app.updateKeyframe(${kf.id}, 'fontFamily', this.value)" onclick="event.stopPropagation();">${fonts}</select>
+                        </div>
+
+                        <div class="flex items-center gap-2 mb-2">
+                             <label class="flex items-center gap-1 cursor-pointer select-none">
+                                <input type="checkbox" ${fixedChecked} class="w-3 h-3 rounded bg-gray-700 border-gray-600 text-blue-500" onchange="window.app.updateKeyframe(${kf.id}, 'isFixed', this.checked)" onclick="event.stopPropagation();">
+                                <span class="text-[10px] text-blue-300 font-bold">字幕模式 (固定屏幕)</span>
+                             </label>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="${kf.textColor}" class="w-6 h-6 bg-transparent border-0 cursor-pointer rounded overflow-hidden" onchange="window.app.updateKeyframe(${kf.id}, 'textColor', this.value)" onclick="event.stopPropagation();">
+                                <span class="text-[10px] text-gray-500">文字颜色</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="${kf.textStrokeColor || '#000000'}" class="w-6 h-6 bg-transparent border-0 cursor-pointer rounded overflow-hidden" onchange="window.app.updateKeyframe(${kf.id}, 'textStrokeColor', this.value)" onclick="event.stopPropagation();">
+                                <span class="text-[10px] text-gray-500">描边颜色</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 mb-1">
+                             <label class="text-[10px] text-gray-500 whitespace-nowrap">描边粗细</label>
+                             <input type="range" min="0" max="10" step="0.5" value="${kf.textStrokeWidth || 4}" class="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer" onchange="window.app.updateKeyframe(${kf.id}, 'textStrokeWidth', this.value)" onclick="event.stopPropagation();">
+                        </div>
+
+                        <div class="flex items-center justify-between gap-2 mb-1 border-t border-gray-700 pt-2 mt-2">
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="${kf.textBgColor}" class="w-6 h-6 bg-transparent border-0 cursor-pointer rounded overflow-hidden" onchange="window.app.updateKeyframe(${kf.id}, 'textBgColor', this.value)" onclick="event.stopPropagation();">
+                                <span class="text-[10px] text-gray-500">背景色</span>
+                            </div>
+                            <div class="flex items-center gap-2 flex-1 justify-end">
+                                 <span class="text-[10px] text-gray-500 whitespace-nowrap">透明度</span>
+                                 <input type="range" min="0" max="1" step="0.1" value="${kf.textBgOpacity || 0.6}" class="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer" onchange="window.app.updateKeyframe(${kf.id}, 'textBgOpacity', this.value)" onclick="event.stopPropagation();">
+                            </div>
+                        </div>
+                    </div>
+                 `;
+                }
+
+                const body = `
+                <div class="p-3 bg-gray-900/50 ${isActive ? 'block' : 'hidden'}">
+                    <div class="text-[10px] text-gray-400 mb-1">入场: ${camLabel}</div>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div><label class="block text-[10px] text-gray-500">运镜(s)</label><input type="number" step="0.1" value="${kf.duration}" class="w-full bg-gray-900 border border-gray-700 rounded px-1 text-[10px] text-white" onchange="window.app.updateKeyframe(${kf.id}, 'duration', this.value)" onclick="event.stopPropagation();"></div>
+                        <div><label class="block text-[10px] text-gray-500">停留(s)</label><input type="number" step="0.1" value="${kf.hold}" class="w-full bg-gray-900 border border-gray-700 rounded px-1 text-[10px] text-white" onchange="window.app.updateKeyframe(${kf.id}, 'hold', this.value)" onclick="event.stopPropagation();"></div>
+                        <div><label class="block text-[10px] text-gray-500">标注(s)</label><input type="number" step="0.1" min="0.1" value="${kf.annotDuration || 1.5}" class="w-full bg-gray-900 border border-gray-700 rounded px-1 text-[10px] text-white" onchange="window.app.updateKeyframe(${kf.id}, 'annotDuration', this.value)" onclick="event.stopPropagation();"></div>
+                        <div><label class="block text-[10px] text-gray-500">动画次数</label><input type="number" min="1" step="1" value="${kf.repeatCount || 1}" class="w-full bg-gray-900 border border-gray-700 rounded px-1 text-[10px] text-white" onchange="window.app.updateKeyframe(${kf.id}, 'repeatCount', this.value)" onclick="event.stopPropagation();"></div>
+                    </div>
+                    
+                    ${textHtml}
+
+                    <div class="border-t border-gray-700 pt-2 mt-2">
+                        <div class="flex items-center gap-2 mb-1">
+                            <label class="block text-[10px] text-gray-500 font-bold">入场方式 (Entry):</label>
+                        </div>
+                        <div class="flex gap-2 mb-2">
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="trans_${kf.id}" ${!kf.resetFirst ? 'checked' : ''} onchange="window.app.updateKeyframe(${kf.id}, 'resetFirst', false)" onclick="event.stopPropagation();">
+                                <span class="text-[10px]">${labelDirect}</span>
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="trans_${kf.id}" ${kf.resetFirst ? 'checked' : ''} onchange="window.app.updateKeyframe(${kf.id}, 'resetFirst', true)" onclick="event.stopPropagation();">
+                                <span class="text-[10px]">${labelReset}</span>
+                            </label>
+                        </div>
+
+                        <div class="${kf.resetFirst ? 'block' : 'hidden'} pl-2 border-l-2 border-gray-600 mt-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-gray-500 mb-1">复位风格</label>
+                                    <select class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-[10px] text-white" onchange="window.app.updateKeyframe(${kf.id}, 'resetCamType', this.value)" onclick="event.stopPropagation();">
+                                        ${resetOptions}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-gray-500 mb-1">复位停留</label>
+                                    <input type="number" step="0.1" value="${kf.resetHold !== undefined ? kf.resetHold : 1.0}" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-[10px] text-white" onchange="window.app.updateKeyframe(${kf.id}, 'resetHold', this.value)" onclick="event.stopPropagation();">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+                div.innerHTML = header + body;
+                return div;
+            }
+
+            updateKeyframe(id, field, value) {
+                let kf = null;
+                let scene = null;
+                for (const s of this.scenes) {
+                    const found = s.keyframes.find(k => k.id === id);
+                    if (found) { kf = found; scene = s; break; }
+                }
+                if (!kf) return;
+
+                if (field === 'resetFirst') {
+                    kf[field] = value;
+                    this.renderTimelineUI();
+                } else if (['resetCamType', 'textColor', 'textBgColor', 'textLabel', 'textBgOpacity', 'isFixed', 'textStrokeColor', 'textStrokeWidth', 'fontFamily'].includes(field)) {
+                    kf[field] = value;
+                    if (['textLabel', 'textColor', 'textBgColor', 'textBgOpacity', 'textStrokeColor', 'textStrokeWidth', 'fontFamily'].includes(field)) {
+                        this.updateCanvasTextObject(id, kf);
+                    }
+                } else if (field === 'repeatCount') {
+                    kf[field] = parseInt(value) || 1;
+                } else {
+                    kf[field] = parseFloat(value);
+                }
+            }
+
+            updateCanvasTextObject(id, kf) {
+                const group = this.canvas.getObjects().find(o => o.data && o.data.id === id && o.data.type === 'text_label');
+                if (!group) return;
+
+                const items = group.getObjects();
+                const bg = items[0];
+                const text = items[1];
+
+                if (kf.textLabel !== undefined) text.set('text', kf.textLabel);
+                if (kf.textColor !== undefined) text.set('fill', kf.textColor);
+                if (kf.textStrokeColor !== undefined) text.set('stroke', kf.textStrokeColor);
+                if (kf.textStrokeWidth !== undefined) text.set('strokeWidth', parseFloat(kf.textStrokeWidth));
+                if (kf.fontFamily !== undefined) text.set('fontFamily', kf.fontFamily);
+
+                text.set('paintFirst', 'stroke');
+
+                const opacity = kf.textBgOpacity !== undefined ? parseFloat(kf.textBgOpacity) : 0.6;
+                const bgCol = hexToRgba(kf.textBgColor || '#000000', opacity);
+                bg.set('fill', bgCol);
+
+                text.setCoords();
+                const fontSize = text.fontSize;
+                const fontFamily = text.fontFamily;
+                const ctx = this.canvas.getContext();
+                ctx.font = `${fontSize}px ${fontFamily}`;
+
+                const measure = ctx.measureText(text.text);
+                const strokeW = text.strokeWidth || 0;
+
+                const newW = measure.width + 40 + strokeW;
+                const newH = fontSize + 30 + strokeW;
+
+                bg.set({ width: newW, height: newH });
+                group.addWithUpdate();
+                this.canvas.requestRenderAll();
+            }
+
+            toggleKeyframeText(id, enable) {
+                let kf = null;
+                for (const s of this.scenes) {
+                    const found = s.keyframes.find(k => k.id === id);
+                    if (found) { kf = found; break; }
+                }
+                if (!kf) return;
+                kf.hasText = enable;
+
+                if (enable) {
+                    if (this.canvas.getObjects().find(o => o.data && o.data.id === id && o.data.type === 'text_label')) return;
+
+                    const textStr = kf.textLabel || '点击输入文字...';
+                    const textObj = new fabric.Text(textStr, {
+                        fontSize: 48,
+                        fill: kf.textColor || '#FACC15',
+                        stroke: kf.textStrokeColor || '#000000',
+                        strokeWidth: kf.textStrokeWidth || 4,
+                        paintFirst: 'stroke',
+                        fontFamily: kf.fontFamily || 'Noto Sans SC',
+                        originX: 'center',
+                        originY: 'center'
+                    });
+
+                    const bgCol = hexToRgba(kf.textBgColor || '#000000', kf.textBgOpacity !== undefined ? kf.textBgOpacity : 0.6);
+                    const bgObj = new fabric.Rect({
+                        fill: bgCol,
+                        rx: 8, ry: 8,
+                        originX: 'center',
+                        originY: 'center',
+                        width: textObj.width + 40,
+                        height: textObj.height + 20
+                    });
+
+                    const textGroup = new fabric.Group([bgObj, textObj], {
+                        left: this.canvas.getWidth() / 2,
+                        top: (this.canvas.getHeight() / 2) + 120,
+                        originX: 'center',
+                        originY: 'center',
+                        transparentCorners: false,
+                        cornerColor: '#10B981',
+                        borderColor: '#10B981',
+                        objectCaching: false,
+                        data: { id: id, type: 'text_label' },
+                        visible: (id === this.activeKeyframeId)
+                    });
+                    this.canvas.add(textGroup);
+                    this.canvas.setActiveObject(textGroup);
+                } else {
+                    const group = this.canvas.getObjects().find(o => o.data && o.data.id === id && o.data.type === 'text_label');
+                    if (group) this.canvas.remove(group);
+                }
+                this.renderTimelineUI();
+                this.updateCanvasVisibility();
+            }
+
+            generateVideo() {
+                if (this.scenes.length === 0) {
+                    this.showModal('请先添加至少一个场景', 'alert');
+                    return;
+                }
+
+                const endWithFullViewEl = document.getElementById('endWithFullView');
+                const endWithFullView = endWithFullViewEl?.checked;
+
+                document.getElementById('processingOverlay').classList.remove('hidden');
+                this.canvas.discardActiveObject();
+
+                const canvasEl = document.getElementById('mainCanvas');
+                const stream = canvasEl.captureStream(30);
+                this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+                this.recordedChunks = [];
+                this.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) this.recordedChunks.push(e.data); };
+                this.mediaRecorder.onstop = () => this.finishExport();
+
+                // 1. Prepare Subtitle Proxies (Global)
+                // 1. Prepare Subtitle Proxies (Global)
+                const subtitleProxies = {};
+                this.scenes.forEach(scene => {
+                    scene.keyframes.forEach(kf => {
+                        if (kf.isFixed && kf.hasText) {
+                            const sourceObj = this.canvas.getObjects().find(o => o.data && o.data.id === kf.id && o.data.type === 'text_label');
+                            if (sourceObj && sourceObj.getObjects) {
+                                // Extract components from the source Group
+                                const srcObjects = sourceObj.getObjects();
+                                const srcText = srcObjects.find(o => o.type === 'text');
+                                const srcBg = srcObjects.find(o => o.type === 'rect');
+
+                                if (srcText && srcBg) {
+                                    // Recreate Text with EXACT properties from source
+                                    const textObj = new fabric.Text(srcText.text, {
+                                        fontSize: srcText.fontSize,
+                                        fontFamily: srcText.fontFamily,
+                                        fill: srcText.fill,
+                                        stroke: srcText.stroke,
+                                        strokeWidth: srcText.strokeWidth,
+                                        paintFirst: srcText.paintFirst,
+                                        scaleX: srcText.scaleX,
+                                        scaleY: srcText.scaleY,
+                                        originX: srcText.originX,
+                                        originY: srcText.originY,
+                                        left: srcText.left, // Relative to group usually, but rebuilt in new group
+                                        top: srcText.top
+                                    });
+
+                                    // Recreate Bg with EXACT properties form source
+                                    const bgObj = new fabric.Rect({
+                                        fill: srcBg.fill,
+                                        width: srcBg.width,
+                                        height: srcBg.height,
+                                        rx: srcBg.rx,
+                                        ry: srcBg.ry,
+                                        scaleX: srcBg.scaleX,
+                                        scaleY: srcBg.scaleY,
+                                        originX: srcBg.originX,
+                                        originY: srcBg.originY,
+                                        left: srcBg.left,
+                                        top: srcBg.top
+                                    });
+
+                                    // Create Proxy Group inheriting transformations
+                                    const proxy = new fabric.Group([bgObj, textObj], {
+                                        left: sourceObj.left,
+                                        top: sourceObj.top,
+                                        scaleX: sourceObj.scaleX,
+                                        scaleY: sourceObj.scaleY,
+                                        angle: sourceObj.angle,
+                                        originX: sourceObj.originX,
+                                        originY: sourceObj.originY,
+                                        opacity: 0,
+                                        objectCaching: false
+                                    });
+                                    subtitleProxies[kf.id] = proxy;
+                                }
+                            }
+                        }
+                    });
+                });
+
+                // 2. Prepare Outtro Proxy
+                let outtroProxy = null;
+                if (endWithFullView) {
+                    const outtroText = document.getElementById('outtroText').value;
+                    if (outtroText) {
+                        const textObj = new fabric.Text(outtroText, { fontSize: 36, fill: '#fff', fontFamily: 'Noto Sans SC', originX: 'center', originY: 'center' });
+                        // Custom styling from UI
+                        const fontF = document.getElementById('outtroFont').value;
+                        const txtCol = document.getElementById('outtroTextColor').value;
+                        const strCol = document.getElementById('outtroStrokeColor').value;
+                        const strW = document.getElementById('outtroStrokeWidth').value;
+                        const bgC = document.getElementById('outtroBgColor').value;
+                        const bgOp = document.getElementById('outtroBgOpacity').value;
+
+                        textObj.set({ fontFamily: fontF, fill: txtCol, stroke: strCol, strokeWidth: parseFloat(strW), paintFirst: 'stroke' });
+                        const bgObj = new fabric.Rect({ fill: hexToRgba(bgC, bgOp), width: textObj.width + 60, height: textObj.height + 30, rx: 12, ry: 12, originX: 'center', originY: 'center' });
+
+                        outtroProxy = new fabric.Group([bgObj, textObj], { left: this.canvas.getWidth() / 2, top: this.canvas.getHeight() / 2, opacity: 0, originX: 'center', originY: 'center' });
+                    }
+                }
+
+                // 3. HUD Render Loop
+                const renderFixedHUD = () => {
+                    const ctx = this.canvas.getContext();
+                    ctx.save();
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    const dpr = this.canvas.getRetinaScaling();
+                    if (dpr !== 1) ctx.scale(dpr, dpr);
+                    Object.values(subtitleProxies).forEach(p => p.render(ctx));
+                    if (outtroProxy && outtroProxy.opacity > 0) outtroProxy.render(ctx);
+                    ctx.restore();
+                };
+                this.canvas.on('after:render', renderFixedHUD);
+
+                // 4. Build Master Timeline
+                const initialVpt = this.canvas.viewportTransform.slice();
+                const masterTl = gsap.timeline({
+                    onComplete: () => {
+                        this.mediaRecorder.stop();
+                        this.canvas.off('after:render', renderFixedHUD);
+                    }
+                });
+
+                const updateFn = () => this.canvas.requestRenderAll();
+                gsap.ticker.add(updateFn);
+
+                this.mediaRecorder.start();
+                masterTl.to({}, { duration: 0.5 });
+
+                // Track the camera proxy of the LAST scene to perform the outtro on it
+                let lastCameraProxy = null;
+
+                this.scenes.forEach((scene, sceneIdx) => {
+                    const prevScene = sceneIdx > 0 ? this.scenes[sceneIdx - 1] : null;
+
+                    masterTl.call(() => {
+                        // Reset Global Viewport for Transition (Critical for correct positioning)
+                        this.canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+
+                        // Hide everything first
+                        this.canvas.getObjects().forEach(obj => {
+                            obj.visible = false;
+                        });
+
+                        // 1. Setup Current Scene Image
+                        const img = scene.image;
+                        img.visible = true;
+                        // Reset transform to center/scale
+                        const scale = Math.min((this.canvas.getWidth() - 100) / img.width, (this.canvas.getHeight() - 100) / img.height);
+                        // Store scale in data for transitions that might need it
+                        img.data.targetScale = scale;
+                        img.set({ scaleX: scale, scaleY: scale, left: this.canvas.getWidth() / 2, top: this.canvas.getHeight() / 2, opacity: 1 });
+                        img.setCoords();
+
+                        // 2. Setup Previous Scene Image (if transition needed)
+                        if (prevScene && scene.transitionType && scene.transitionType !== 'none') {
+                            prevScene.image.visible = true;
+                            prevScene.image.opacity = 1; // Ensure visible start
+                            // Ensure prev image is also centered/scaled correctly (it might have been mutated by previous logic, though we reset Vpt)
+                            const prevScale = Math.min((this.canvas.getWidth() - 100) / prevScene.image.width, (this.canvas.getHeight() - 100) / prevScene.image.height);
+                            prevScene.image.set({ scaleX: prevScale, scaleY: prevScale, left: this.canvas.getWidth() / 2, top: this.canvas.getHeight() / 2 });
+
+                            // Execute Setup Logic from Registry
+                            TransitionRegistry[scene.transitionType].setup(this.canvas, img, prevScene.image);
+                        } else {
+                            // Hard cut setup
+                            img.opacity = 1;
+                        }
+
+                        // Show Objects for this scene (hidden initially, fade/pop in later by keyframes)
+                        this.canvas.getObjects().forEach(obj => {
+                            if (obj.data && obj.data.id && scene.keyframes.find(k => k.id === obj.data.id)) {
+                                obj.visible = true;
+                                obj.opacity = 0;
+                            }
+                        });
+                    });
+
+                    // Apply Transition Animation
+                    if (prevScene && scene.transitionType && scene.transitionType !== 'none') {
+                        TransitionRegistry[scene.transitionType].animate(masterTl, scene.image, prevScene.image, 1.0); // 1.0s transition duration
+                    } else {
+                        masterTl.to({}, { duration: 0.1 }); // Instant cut delay
+                    }
+
+                    // Cleanup Previous Image after transition
+                    if (prevScene) {
+                        masterTl.call(() => { prevScene.image.visible = false; });
+                    }
+
+                    // Create a proxy for this scene's camera movement
+                    const cameraProxy = { zoom: 1, x: 0, y: 0 };
+                    lastCameraProxy = cameraProxy; // Update reference to the latest proxy
+
+                    scene.keyframes.forEach(kf => {
+                        const annotObj = this.canvas.getObjects().find(o => o.data && o.data.id === kf.id && o.data.type !== 'text_label');
+                        const spatialText = (!kf.isFixed && kf.hasText) ? this.canvas.getObjects().find(o => o.data && o.data.id === kf.id && o.data.type === 'text_label') : null;
+                        const proxyText = (kf.isFixed && kf.hasText) ? subtitleProxies[kf.id] : null;
+
+                        if (!annotObj) return;
+
+                        const camConfig = CameraRegistry[kf.camType];
+                        const annotConfig = AnnotationRegistry[kf.annotType];
+
+                        // Reset Phase
+                        if (kf.resetFirst) {
+                            const rConfig = CameraRegistry[kf.resetCamType || 'slow_pan'];
+                            if (spatialText) masterTl.set(spatialText, { opacity: 0 });
+                            if (proxyText) masterTl.set(proxyText, { opacity: 0 });
+
+                            masterTl.to(cameraProxy, {
+                                zoom: 1, x: this.canvas.getWidth() / 2 - (scene.image.getCenterPoint().x), y: this.canvas.getHeight() / 2 - (scene.image.getCenterPoint().y),
+                                duration: 1.5, ease: rConfig.ease,
+                                onUpdate: () => this.canvas.setViewportTransform([cameraProxy.zoom, 0, 0, cameraProxy.zoom, cameraProxy.x, cameraProxy.y])
+                            });
+                            if (kf.resetHold > 0) masterTl.to({}, { duration: kf.resetHold });
+                        }
+
+                        // Move Phase
+                        const center = annotObj.getCenterPoint();
+                        let targetZoom = Math.min(this.canvas.getWidth() / annotObj.getScaledWidth(), this.canvas.getHeight() / annotObj.getScaledHeight()) * 0.6;
+                        targetZoom = Math.min(targetZoom, 5);
+                        const tX = (this.canvas.getWidth() / 2) - (center.x * targetZoom);
+                        const tY = (this.canvas.getHeight() / 2) - (center.y * targetZoom);
+
+                        const moveDur = kf.duration * (camConfig.durationMult || 1);
+
+                        if (kf.camType === 'instant_cut') {
+                            masterTl.set(cameraProxy, { zoom: targetZoom, x: tX, y: tY, onUpdate: () => this.canvas.setViewportTransform([cameraProxy.zoom, 0, 0, cameraProxy.zoom, cameraProxy.x, cameraProxy.y]) });
+                        } else {
+                            masterTl.to(cameraProxy, { zoom: targetZoom, x: tX, y: tY, duration: moveDur, ease: camConfig.ease, onUpdate: () => this.canvas.setViewportTransform([cameraProxy.zoom, 0, 0, cameraProxy.zoom, cameraProxy.x, cameraProxy.y]) });
+                        }
+
+                        if (spatialText) masterTl.fromTo(spatialText, { opacity: 0 }, { opacity: 1, duration: 0.5 }, "<");
+                        if (proxyText) masterTl.fromTo(proxyText, { opacity: 0 }, { opacity: 1, duration: 0.5 }, "<");
+
+                        const label = `s${scene.id}_k${kf.id}`;
+                        masterTl.addLabel(label);
+                        const overlay = annotConfig.animate(masterTl, annotObj, kf.repeatCount, kf.annotDuration, label);
+                        if (kf.annotType === 'spotlight_focus' && overlay) masterTl.call(() => this.canvas.remove(overlay), null, `>+=${kf.hold}`);
+
+                        masterTl.to({}, { duration: kf.hold });
+
+                        if (spatialText) masterTl.to(spatialText, { opacity: 0, duration: 0.3 }, ">-0.3");
+                        if (proxyText) masterTl.to(proxyText, { opacity: 0, duration: 0.3 }, ">-0.3");
+                        if (kf.annotType !== 'spotlight_focus') masterTl.to(annotObj, { opacity: 0, duration: 0.3 }, ">-0.3");
+                    });
+                });
+
+                // 5. Outtro (Zoom out last scene + Text)
+                if (endWithFullView && lastCameraProxy) {
+                    const outtroDur = parseFloat(document.getElementById('outtroDuration').value) || 3;
+
+                    // Animate the LAST scene's camera back to 1,0,0 (Full View)
+                    masterTl.to(lastCameraProxy, {
+                        zoom: 1, x: 0, y: 0,
+                        duration: 2.0,
+                        ease: "power2.inOut",
+                        onUpdate: () => this.canvas.setViewportTransform([lastCameraProxy.zoom, 0, 0, lastCameraProxy.zoom, lastCameraProxy.x, lastCameraProxy.y])
+                    });
+
+                    if (outtroProxy) {
+                        // Fade in text slightly after zoom starts
+                        masterTl.fromTo(outtroProxy, { opacity: 0 }, { opacity: 1, duration: 1 }, "<+0.5");
+                        // Hold
+                        masterTl.to({}, { duration: outtroDur });
+                        // Fade out
+                        masterTl.to(outtroProxy, { opacity: 0, duration: 0.5 });
+                    } else {
+                        // Just hold the full view if no text
+                        masterTl.to({}, { duration: 1.0 });
+                    }
+                }
+
+                masterTl.call(() => {
+                    gsap.ticker.remove(updateFn);
+
+                    // Reset all objects opacity and visibility
+                    this.canvas.getObjects().forEach(obj => {
+                        obj.opacity = 1;
+                        obj.visible = true;
+                    });
+
+                    this.updateCanvasVisibility();
+                    this.canvas.setViewportTransform(initialVpt);
+                    this.canvas.requestRenderAll();
+                });
+            }
+
+            finishExport() {
+                const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `promotion_demo_${Date.now()}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    const overlay = document.getElementById('processingOverlay');
+                    if (overlay) overlay.classList.add('hidden');
+                }, 100);
+            }
+
+            // --- Custom Modal Helper ---
+            showModal(message, type = 'alert', onConfirm = null) {
+                const modal = document.getElementById('customModal');
+                const msgEl = document.getElementById('modalMessage');
+                const titleEl = document.getElementById('modalTitle');
+                const cancelBtn = document.getElementById('modalCancelBtn');
+                const confirmBtn = document.getElementById('modalConfirmBtn');
+
+                if (!modal) return; // Safety
+
+                msgEl.textContent = message;
+
+                // Reset Buttons (Clone to clear events)
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+                const newCancelBtn = cancelBtn.cloneNode(true);
+                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+                const closeModal = () => modal.classList.add('hidden');
+
+                if (type === 'confirm') {
+                    titleEl.textContent = '确认操作';
+                    newCancelBtn.classList.remove('hidden');
+                    newCancelBtn.onclick = closeModal;
+
+                    newConfirmBtn.textContent = '确认删除';
+                    newConfirmBtn.className = "px-4 py-2 rounded bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-lg transition";
+                    newConfirmBtn.onclick = () => {
+                        closeModal();
+                        if (onConfirm) onConfirm();
+                    };
+                } else {
+                    titleEl.textContent = '提示';
+                    newCancelBtn.classList.add('hidden');
+
+                    newConfirmBtn.textContent = '确定';
+                    newConfirmBtn.className = "px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-lg transition";
+                    newConfirmBtn.onclick = closeModal;
+                }
+
+                modal.classList.remove('hidden');
+            }
+        }
+
+        // Initialize when window loads
+        window.onload = () => {
+            new ProMotionApp();
+        };
+    </script>
+</body>
+
+</html>
