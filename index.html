@@ -470,6 +470,24 @@
                 },
                 animate: (tl, obj, repeat, duration, label) => {
                 }
+            },
+            'none': {
+                label: '无标注样式',
+                create: (canvas) => {
+                    // Create a very faint dash-rect in editor so user can see/move it
+                    return new fabric.Rect({
+                        width: 150, height: 100,
+                        fill: 'transparent',
+                        stroke: 'rgba(59, 130, 246, 0.3)',
+                        strokeWidth: 1,
+                        strokeDashArray: [5, 5],
+                        originX: 'center', originY: 'center',
+                        data: { type: 'none' }
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    // Strictly do nothing - stays invisible in video
+                }
             }
         };
 
@@ -480,7 +498,8 @@
             'slow_pan': { label: '标准推拉 (Standard)', ease: 'power1.inOut', durationMult: 1 },
             'elastic_jump': { label: 'Q弹跳跃 (Elastic)', ease: 'back.out(1.7)', durationMult: 1 },
             'cinematic_drama': { label: '电影感 (Cinematic)', ease: 'expo.inOut', durationMult: 1.2 },
-            'fast_approach': { label: '急速缓冲 (Fast)', ease: 'power4.out', durationMult: 0.8 }
+            'fast_approach': { label: '急速缓冲 (Fast)', ease: 'power4.out', durationMult: 0.8 },
+            'none': { label: '无运镜风格', ease: 'none', durationMult: 0 }
         };
 
         // --- 3. Transition Registry (Scene Transitions) ---
@@ -1611,23 +1630,25 @@
                             if (kf.resetHold > 0) masterTl.to({}, { duration: kf.resetHold });
                         }
 
-                        // Move Phase
-                        const center = annotObj.getCenterPoint();
-                        let targetZoom = Math.min(this.canvas.getWidth() / annotObj.getScaledWidth(), this.canvas.getHeight() / annotObj.getScaledHeight()) * 0.6;
-                        targetZoom = Math.min(targetZoom, 5);
-                        const tX = (this.canvas.getWidth() / 2) - (center.x * targetZoom);
-                        const tY = (this.canvas.getHeight() / 2) - (center.y * targetZoom);
+                        // Move Phase (Skip if 'none')
+                        if (kf.camType !== 'none') {
+                            const center = annotObj.getCenterPoint();
+                            let targetZoom = Math.min(this.canvas.getWidth() / annotObj.getScaledWidth(), this.canvas.getHeight() / annotObj.getScaledHeight()) * 0.6;
+                            targetZoom = Math.min(targetZoom, 5);
+                            const tX = (this.canvas.getWidth() / 2) - (center.x * targetZoom);
+                            const tY = (this.canvas.getHeight() / 2) - (center.y * targetZoom);
 
-                        const moveDur = kf.duration * (camConfig.durationMult || 1);
+                            const moveDur = kf.duration * (camConfig.durationMult || 1);
 
-                        if (kf.camType === 'instant_cut') {
-                            masterTl.set(cameraProxy, { zoom: targetZoom, x: tX, y: tY, onUpdate: () => this.canvas.setViewportTransform([cameraProxy.zoom, 0, 0, cameraProxy.zoom, cameraProxy.x, cameraProxy.y]) });
-                        } else {
-                            masterTl.to(cameraProxy, { zoom: targetZoom, x: tX, y: tY, duration: moveDur, ease: camConfig.ease, onUpdate: () => this.canvas.setViewportTransform([cameraProxy.zoom, 0, 0, cameraProxy.zoom, cameraProxy.x, cameraProxy.y]) });
+                            if (kf.camType === 'instant_cut') {
+                                masterTl.set(cameraProxy, { zoom: targetZoom, x: tX, y: tY, onUpdate: () => this.canvas.setViewportTransform([cameraProxy.zoom, 0, 0, cameraProxy.zoom, cameraProxy.x, cameraProxy.y]) });
+                            } else {
+                                masterTl.to(cameraProxy, { zoom: targetZoom, x: tX, y: tY, duration: moveDur, ease: camConfig.ease, onUpdate: () => this.canvas.setViewportTransform([cameraProxy.zoom, 0, 0, cameraProxy.zoom, cameraProxy.x, cameraProxy.y]) });
+                            }
                         }
 
-                        if (spatialText) masterTl.fromTo(spatialText, { opacity: 0 }, { opacity: 1, duration: 0.5 }, "<");
-                        if (proxyText) masterTl.fromTo(proxyText, { opacity: 0 }, { opacity: 1, duration: 0.5 }, "<");
+                        if (spatialText) masterTl.fromTo(spatialText, { opacity: 0 }, { opacity: 1, duration: 0.5 }, (kf.camType === 'none' ? undefined : "<"));
+                        if (proxyText) masterTl.fromTo(proxyText, { opacity: 0 }, { opacity: 1, duration: 0.5 }, (kf.camType === 'none' ? undefined : "<"));
 
                         const label = `s${scene.id}_k${kf.id}`;
                         masterTl.addLabel(label);
@@ -1638,7 +1659,7 @@
 
                         if (spatialText) masterTl.to(spatialText, { opacity: 0, duration: 0.3 }, ">-0.3");
                         if (proxyText) masterTl.to(proxyText, { opacity: 0, duration: 0.3 }, ">-0.3");
-                        if (kf.annotType !== 'spotlight_focus') masterTl.to(annotObj, { opacity: 0, duration: 0.3 }, ">-0.3");
+                        if (kf.annotType !== 'spotlight_focus' && kf.annotType !== 'none') masterTl.to(annotObj, { opacity: 0, duration: 0.3 }, ">-0.3");
                     });
                 });
 
