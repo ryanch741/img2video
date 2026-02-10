@@ -84,10 +84,10 @@
 <body class="bg-gray-900 text-gray-100 h-screen w-screen overflow-hidden flex flex-col">
 
     <!-- UI LAYOUT -->
-    <div class="grid grid-cols-12 h-full w-full">
+    <div class="flex h-full w-full overflow-hidden">
 
         <!-- Left Sidebar: Controls -->
-        <div class="col-span-3 bg-gray-800 border-r border-gray-700 flex flex-col shadow-xl z-10 h-full max-h-screen">
+        <div class="w-1/4 bg-gray-800 border-r border-gray-700 flex flex-col shadow-xl z-10 h-full max-h-screen">
             <!-- Header -->
             <div class="p-4 border-b border-gray-700 bg-gray-900 flex-shrink-0">
                 <h1
@@ -199,12 +199,19 @@
                             <input type="text" id="outtroText" placeholder="例如: 谢谢观看"
                                 class="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white placeholder-gray-600">
                         </div>
-                        <!-- Duration -->
-                        <div class="flex items-center gap-2">
-                            <span class="text-[10px] text-gray-500 w-12">停留时长</span>
-                            <input type="number" id="outtroDuration" value="3.0" step="0.5"
-                                class="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white text-center">
-                            <span class="text-[10px] text-gray-500">秒</span>
+                        <!-- Font Size & Duration -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] text-gray-500 w-12">文字大小</span>
+                                <input type="number" id="outtroFontSize" value="48" step="2"
+                                    class="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white text-center">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] text-gray-500 w-12">停留时长</span>
+                                <input type="number" id="outtroDuration" value="3.0" step="0.5"
+                                    class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white text-center">
+                                <span class="text-[10px] text-gray-500">秒</span>
+                            </div>
                         </div>
 
                         <!-- Font Family -->
@@ -259,7 +266,7 @@
         </div>
 
         <!-- Right: Canvas Area -->
-        <div class="col-span-9 bg-gray-950 relative flex flex-col h-full overflow-hidden">
+        <div class="flex-1 bg-gray-950 relative flex flex-col h-full overflow-hidden">
             <!-- Hint Bar -->
             <div
                 class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur-sm px-4 py-1 rounded-full text-xs text-gray-300 border border-white/10 z-20 pointer-events-none select-none">
@@ -599,6 +606,7 @@
                 this.scenes = []; // Array of { id, image, keyframes: [], thumbnail: string, transitionType: string }
                 this.activeSceneId = null;
                 this.activeKeyframeId = null;
+                this.isEditingOuttro = false;
                 this.mediaRecorder = null;
                 this.recordedChunks = [];
 
@@ -691,10 +699,13 @@
                                 options.classList.remove('hidden');
                                 toggleBtn.classList.remove('hidden');
                                 chevron.classList.add('rotate-180');
+                                this.switchToOuttro(); // Auto-enter outtro mode
                             } else {
                                 options.classList.add('hidden');
                                 toggleBtn.classList.add('hidden');
                                 chevron.classList.remove('rotate-180');
+                                this.isEditingOuttro = false;
+                                if (this.scenes.length > 0) this.switchScene(this.scenes[0].id);
                             }
                         });
 
@@ -704,9 +715,27 @@
                             if (isHidden) {
                                 options.classList.remove('hidden');
                                 chevron.classList.add('rotate-180');
+                                if (outtroCheck.checked) this.switchToOuttro(); // Auto-enter outtro mode if enabled
                             } else {
                                 options.classList.add('hidden');
                                 chevron.classList.remove('rotate-180');
+                                // Exit outtro mode when settings are collapsed
+                                if (this.isEditingOuttro) {
+                                    this.isEditingOuttro = false;
+                                    if (this.activeSceneId) {
+                                        this.switchScene(this.activeSceneId);
+                                    }
+                                }
+                            }
+                        });
+
+                        // Sync outtro changes
+                        ['outtroText', 'outtroFont', 'outtroFontSize', 'outtroTextColor', 'outtroBgColor', 'outtroStrokeColor', 'outtroStrokeWidth', 'outtroBgOpacity'].forEach(id => {
+                            const el = document.getElementById(id);
+                            if (el) {
+                                el.addEventListener('input', () => {
+                                    if (this.isEditingOuttro) this.syncOuttroObject();
+                                });
                             }
                         });
                     }
@@ -789,8 +818,81 @@
 
                 this.updateCanvasVisibility();
 
-                this.centerActiveSceneImage();
                 this.renderTimelineUI();
+                this.canvas.requestRenderAll();
+            }
+
+            switchToOuttro() {
+                this.isEditingOuttro = true;
+                // Focus on last scene image as background for outtro
+                if (this.scenes.length > 0) {
+                    this.activeSceneId = this.scenes[this.scenes.length - 1].id;
+                }
+                this.activeKeyframeId = null;
+                this.canvas.discardActiveObject();
+
+                // Reset view to full view
+                this.canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+
+                this.updateCanvasVisibility();
+                this.syncOuttroObject();
+                this.renderTimelineUI();
+                // Select the outtro object so user sees handles
+                const obj = this.canvas.getObjects().find(o => o.data && o.data.type === 'outtro');
+                if (obj) this.canvas.setActiveObject(obj);
+                this.canvas.requestRenderAll();
+            }
+
+            syncOuttroObject() {
+                let group = this.canvas.getObjects().find(o => o.data && o.data.type === 'outtro');
+                const outtroText = document.getElementById('outtroText').value || ' ';
+                const fontF = document.getElementById('outtroFont').value;
+                const fontS = parseInt(document.getElementById('outtroFontSize').value) || 48;
+                const txtCol = document.getElementById('outtroTextColor').value;
+                const strCol = document.getElementById('outtroStrokeColor').value;
+                const strW = document.getElementById('outtroStrokeWidth').value;
+                const bgC = document.getElementById('outtroBgColor').value;
+                const bgOp = document.getElementById('outtroBgOpacity').value;
+
+                if (!group) {
+                    const textObj = new fabric.Text(outtroText, { fontSize: fontS, originX: 'center', originY: 'center' });
+                    const bgObj = new fabric.Rect({ rx: 12, ry: 12, originX: 'center', originY: 'center' });
+                    group = new fabric.Group([bgObj, textObj], {
+                        left: this.canvas.getWidth() / 2,
+                        top: this.canvas.getHeight() / 2,
+                        originX: 'center',
+                        originY: 'center',
+                        data: { type: 'outtro' }
+                    });
+                    this.canvas.add(group);
+                }
+
+                const items = group.getObjects();
+                const bg = items[0];
+                const text = items[1];
+
+                // Performance fix: match standard text labels' update logic
+                const oldScale = { x: group.scaleX, y: group.scaleY };
+                group.set({ scaleX: 1, scaleY: 1 });
+
+                text.set({
+                    text: outtroText,
+                    fontSize: fontS,
+                    fontFamily: fontF,
+                    fill: txtCol,
+                    stroke: strCol,
+                    strokeWidth: parseFloat(strW),
+                    paintFirst: 'stroke'
+                });
+                bg.set({
+                    fill: hexToRgba(bgC, bgOp),
+                    width: text.width + 60,
+                    height: text.height + 30
+                });
+
+                group.addWithUpdate();
+                group.set({ scaleX: oldScale.x, scaleY: oldScale.y });
+                group.setCoords();
                 this.canvas.requestRenderAll();
             }
 
@@ -823,6 +925,15 @@
             updateCanvasVisibility() {
                 // console.log('[Debug] updateCanvasVisibility. ActiveScene:', this.activeSceneId, 'ActiveKF:', this.activeKeyframeId);
                 this.canvas.getObjects().forEach(obj => {
+                    // Outtro Special Handling
+                    if (obj.data && obj.data.type === 'outtro') {
+                        obj.visible = this.isEditingOuttro;
+                        obj.selectable = this.isEditingOuttro;
+                        obj.evented = this.isEditingOuttro;
+                        if (this.isEditingOuttro) obj.bringToFront();
+                        return;
+                    }
+
                     let objSceneId = null;
                     let isKeyframeObject = false;
 
@@ -1481,21 +1592,47 @@
                 // 2. Prepare Outtro Proxy
                 let outtroProxy = null;
                 if (endWithFullView) {
+                    const canvasOuttro = this.canvas.getObjects().find(o => o.data && o.data.type === 'outtro');
                     const outtroText = document.getElementById('outtroText').value;
-                    if (outtroText) {
-                        const textObj = new fabric.Text(outtroText, { fontSize: 36, fill: '#fff', fontFamily: 'Noto Sans SC', originX: 'center', originY: 'center' });
-                        // Custom styling from UI
-                        const fontF = document.getElementById('outtroFont').value;
-                        const txtCol = document.getElementById('outtroTextColor').value;
-                        const strCol = document.getElementById('outtroStrokeColor').value;
-                        const strW = document.getElementById('outtroStrokeWidth').value;
-                        const bgC = document.getElementById('outtroBgColor').value;
-                        const bgOp = document.getElementById('outtroBgOpacity').value;
+                    if (outtroText && canvasOuttro) {
+                        // Extract exact properties from canvas object to ensure WYSIWYG
+                        const srcObjects = canvasOuttro.getObjects();
+                        const srcText = srcObjects.find(o => o.type === 'text');
+                        const srcBg = srcObjects.find(o => o.type === 'rect');
 
-                        textObj.set({ fontFamily: fontF, fill: txtCol, stroke: strCol, strokeWidth: parseFloat(strW), paintFirst: 'stroke' });
-                        const bgObj = new fabric.Rect({ fill: hexToRgba(bgC, bgOp), width: textObj.width + 60, height: textObj.height + 30, rx: 12, ry: 12, originX: 'center', originY: 'center' });
+                        if (srcText && srcBg) {
+                            const textObj = new fabric.Text(srcText.text, {
+                                fontSize: srcText.fontSize,
+                                fontFamily: srcText.fontFamily,
+                                fill: srcText.fill,
+                                stroke: srcText.stroke,
+                                strokeWidth: srcText.strokeWidth,
+                                paintFirst: srcText.paintFirst,
+                                originX: 'center',
+                                originY: 'center'
+                            });
+                            const bgObj = new fabric.Rect({
+                                fill: srcBg.fill,
+                                width: srcBg.width,
+                                height: srcBg.height,
+                                rx: srcBg.rx,
+                                ry: srcBg.ry,
+                                originX: 'center',
+                                originY: 'center'
+                            });
 
-                        outtroProxy = new fabric.Group([bgObj, textObj], { left: this.canvas.getWidth() / 2, top: this.canvas.getHeight() / 2, opacity: 0, originX: 'center', originY: 'center' });
+                            outtroProxy = new fabric.Group([bgObj, textObj], {
+                                left: canvasOuttro.left,
+                                top: canvasOuttro.top,
+                                scaleX: canvasOuttro.scaleX,
+                                scaleY: canvasOuttro.scaleY,
+                                angle: canvasOuttro.angle,
+                                opacity: 0,
+                                originX: 'center',
+                                originY: 'center',
+                                objectCaching: false
+                            });
+                        }
                     }
                 }
 
@@ -1719,126 +1856,13 @@
                     if (overlay) overlay.classList.add('hidden');
                 }, 100);
             }
-
-            // --- Project Management ---
             exportProject() {
                 if (this.scenes.length === 0) {
                     this.showModal('当前没有场景可保存', 'alert');
                     return;
                 }
 
-                const projectData = {
-                    version: "1.0",
-                    timestamp: Date.now(),
-                    scenes: this.scenes.map(s => {
-                        return {
-                            id: s.id,
-                            thumbnail: s.thumbnail, // Base64
-                            transitionType: s.transitionType,
-                            imageSrc: s.image.getSrc(), // Base64
-                            keyframes: s.keyframes.map(kf => {
-                                // Use loose equality for ID matching to catch string/number discrepancies from JSON
-                                const annotObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type !== 'text_label');
-                                const annotProps = annotObj ? {
-                                    left: annotObj.left,
-                                    top: annotObj.top,
-                                    scaleX: annotObj.scaleX,
-                                    scaleY: annotObj.scaleY,
-                                    width: annotObj.width,
-                                    height: annotObj.height,
-                                    angle: annotObj.angle
-                                } : null;
-
-                                const textObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type === 'text_label');
-                                const textProps = textObj ? {
-                                    left: textObj.left,
-                                    top: textObj.top,
-                                    scaleX: textObj.scaleX,
-                                    scaleY: textObj.scaleY,
-                                    angle: textObj.angle
-                                } : null;
-
-                                return {
-                                    config: kf,
-                                    annotProps: annotProps,
-                                    textProps: textProps
-                                };
-                            })
-                        };
-                    }),
-                    outtro: {
-                        enabled: document.getElementById('endWithFullView').checked,
-                        text: document.getElementById('outtroText').value,
-                        duration: document.getElementById('outtroDuration').value,
-                        font: document.getElementById('outtroFont').value,
-                        textColor: document.getElementById('outtroTextColor').value,
-                        strokeColor: document.getElementById('outtroStrokeColor').value,
-                        strokeWidth: document.getElementById('outtroStrokeWidth').value,
-                        bgColor: document.getElementById('outtroBgColor').value,
-                        bgOpacity: document.getElementById('outtroBgOpacity').value
-                    }
-                };
-
-                const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `promotion_project_${Date.now()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-            }
-
-
-
-            // --- Custom Modal Helper ---
-            showModal(message, type = 'alert', onConfirm = null) {
-                const modal = document.getElementById('customModal');
-                const msgEl = document.getElementById('modalMessage');
-                const titleEl = document.getElementById('modalTitle');
-                const cancelBtn = document.getElementById('modalCancelBtn');
-                const confirmBtn = document.getElementById('modalConfirmBtn');
-
-                if (!modal) return; // Safety
-
-                msgEl.textContent = message;
-
-                // Reset Buttons (Clone to clear events)
-                const newConfirmBtn = confirmBtn.cloneNode(true);
-                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-
-                const newCancelBtn = cancelBtn.cloneNode(true);
-                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-
-                const closeModal = () => modal.classList.add('hidden');
-
-                if (type === 'confirm') {
-                    titleEl.textContent = '确认操作';
-                    newCancelBtn.classList.remove('hidden');
-                    newCancelBtn.onclick = closeModal;
-
-                    newConfirmBtn.textContent = '确认删除';
-                    newConfirmBtn.className = "px-4 py-2 rounded bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-lg transition";
-                    newConfirmBtn.onclick = () => {
-                        closeModal();
-                        if (onConfirm) onConfirm();
-                    };
-                } else {
-                    titleEl.textContent = '提示';
-                    newCancelBtn.classList.add('hidden');
-
-                    newConfirmBtn.textContent = '确定';
-                    newConfirmBtn.className = "px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-lg transition";
-                    newConfirmBtn.onclick = closeModal;
-                }
-
-                modal.classList.remove('hidden');
-            }
-            // --- Project Management ---
-            exportProject() {
-                if (this.scenes.length === 0) {
-                    this.showModal('当前没有场景可保存', 'alert');
-                    return;
-                }
+                const outtroObj = this.canvas.getObjects().find(o => o.data && o.data.type === 'outtro');
 
                 const projectData = {
                     version: "1.0",
@@ -1888,7 +1912,13 @@
                         strokeColor: document.getElementById('outtroStrokeColor').value,
                         strokeWidth: document.getElementById('outtroStrokeWidth').value,
                         bgColor: document.getElementById('outtroBgColor').value,
-                        bgOpacity: document.getElementById('outtroBgOpacity').value
+                        bgOpacity: document.getElementById('outtroBgOpacity').value,
+                        fontSize: document.getElementById('outtroFontSize').value,
+                        left: outtroObj ? outtroObj.left : null,
+                        top: outtroObj ? outtroObj.top : null,
+                        scaleX: outtroObj ? outtroObj.scaleX : null,
+                        scaleY: outtroObj ? outtroObj.scaleY : null,
+                        angle: outtroObj ? outtroObj.angle : null
                     }
                 };
 
@@ -1927,6 +1957,26 @@
                             document.getElementById('outtroStrokeWidth').value = data.outtro.strokeWidth || 4;
                             document.getElementById('outtroBgColor').value = data.outtro.bgColor || '#000000';
                             document.getElementById('outtroBgOpacity').value = data.outtro.bgOpacity || 0.8;
+                            document.getElementById('outtroFontSize').value = data.outtro.fontSize || 48;
+
+                            // Restore Outtro Object if props exist
+                            if (data.outtro.left !== undefined) {
+                                this.isEditingOuttro = true;
+                                this.syncOuttroObject();
+                                const outtroObj = this.canvas.getObjects().find(o => o.data && o.data.type === 'outtro');
+                                if (outtroObj) {
+                                    outtroObj.set({
+                                        left: data.outtro.left,
+                                        top: data.outtro.top,
+                                        scaleX: data.outtro.scaleX,
+                                        scaleY: data.outtro.scaleY,
+                                        angle: data.outtro.angle || 0
+                                    });
+                                    outtroObj.setCoords();
+                                }
+                                this.isEditingOuttro = false;
+                                this.updateCanvasVisibility();
+                            }
 
                             // Trigger UI update for outtro section
                             const evt = new Event('change');
