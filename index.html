@@ -609,12 +609,117 @@
 
         // --- 2. Camera Registry (Movement Styles) ---
         const CameraRegistry = {
-            'instant_cut': { label: '硬切 (Instant)', ease: 'none', durationMult: 0.01 },
-            'smooth_linear': { label: '线性匀速 (Linear)', ease: 'none', durationMult: 1 },
-            'slow_pan': { label: '标准推拉 (Standard)', ease: 'power1.inOut', durationMult: 1 },
+            'impact_shake': {
+                label: '强力震击 (Impact)',
+                durationMult: 0.6,
+                custom: (tl, proxy, canvas, target, duration, label) => {
+                    tl.to(proxy, {
+                        zoom: target.zoom, x: target.x, y: target.y,
+                        duration: duration,
+                        ease: "power4.out",
+                        onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y])
+                    }, label);
+                    // More intense shake: 12 cycles instead of 6
+                    for (let i = 0; i < 12; i++) {
+                        const intensity = i < 6 ? 40 : 20; // Decay effect
+                        tl.to(proxy, {
+                            x: target.x + (Math.random() - 0.5) * intensity,
+                            y: target.y + (Math.random() - 0.5) * intensity,
+                            duration: 0.04,
+                            onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y])
+                        });
+                    }
+                    tl.to(proxy, { x: target.x, y: target.y, duration: 0.1, onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y]) });
+                }
+            },
+            'springy_bounce': {
+                label: '机械弹簧 (Spring)',
+                durationMult: 1,
+                custom: (tl, proxy, canvas, target, duration, label) => {
+                    // Quick overshoot
+                    tl.to(proxy, {
+                        zoom: target.zoom * 1.1, x: target.x, y: target.y,
+                        duration: duration * 0.7,
+                        ease: "power2.out",
+                        onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y])
+                    }, label);
+                    // Bounce back
+                    tl.to(proxy, {
+                        zoom: target.zoom,
+                        duration: duration * 0.5,
+                        ease: "elastic.out(1, 0.3)",
+                        onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y])
+                    });
+                }
+            },
+            'techno_glitch': {
+                label: '数码故障 (Glitch)',
+                durationMult: 0.8,
+                custom: (tl, proxy, canvas, target, duration, label) => {
+                    tl.to(proxy, {
+                        zoom: target.zoom, x: target.x, y: target.y,
+                        duration: duration,
+                        ease: "none",
+                        onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y])
+                    }, label);
+                    // Rapid random offsets during move
+                    for (let i = 0; i < 8; i++) {
+                        tl.to(proxy, {
+                            x: target.x + (Math.random() - 0.5) * 60,
+                            zoom: target.zoom * (1 + (Math.random() - 0.5) * 0.1),
+                            duration: 0.03,
+                            onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y])
+                        }, label + "+=" + (Math.random() * duration));
+                    }
+                    tl.to(proxy, { x: target.x, zoom: target.zoom, duration: 0.05, onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y]) });
+                }
+            },
+            'heartbeat_zoom': {
+                label: '心跳律动 (Heartbeat)',
+                durationMult: 1.2,
+                custom: (tl, proxy, canvas, target, duration, label) => {
+                    tl.to(proxy, {
+                        zoom: target.zoom, x: target.x, y: target.y,
+                        duration: duration,
+                        ease: "power2.inOut",
+                        onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y])
+                    }, label);
+                    // Double pulse like a heartbeat
+                    const pulse = gsap.timeline({ repeat: 2 });
+                    pulse.to(proxy, { zoom: target.zoom * 1.05, duration: 0.1, ease: "power2.out" })
+                        .to(proxy, { zoom: target.zoom, duration: 0.1, ease: "power2.in" })
+                        .to(proxy, { zoom: target.zoom * 1.03, duration: 0.1, ease: "power2.out" })
+                        .to(proxy, { zoom: target.zoom, duration: 0.4, ease: "power2.in", onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y]) });
+                    tl.add(pulse);
+                }
+            },
+            'organic_breathing': {
+                label: '柔和呼吸 (Floating)',
+                durationMult: 1,
+                custom: (tl, proxy, canvas, target, duration, label) => {
+                    tl.to(proxy, {
+                        zoom: target.zoom, x: target.x, y: target.y,
+                        duration: duration,
+                        ease: "sine.inOut",
+                        onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y])
+                    }, label);
+                    // Subtle hover/breath after arrival
+                    tl.to(proxy, {
+                        zoom: target.zoom * 1.02,
+                        duration: 1.5,
+                        repeat: 3,
+                        yoyo: true,
+                        ease: "sine.inOut",
+                        onUpdate: () => canvas.setViewportTransform([proxy.zoom, 0, 0, proxy.zoom, proxy.x, proxy.y])
+                    });
+                }
+            },
+            'fast_approach': { label: '急速缓冲 (Fast)', ease: 'power4.out', durationMult: 0.8 },
             'elastic_jump': { label: 'Q弹跳跃 (Elastic)', ease: 'back.out(1.7)', durationMult: 1 },
             'cinematic_drama': { label: '电影感 (Cinematic)', ease: 'expo.inOut', durationMult: 1.2 },
-            'fast_approach': { label: '急速缓冲 (Fast)', ease: 'power4.out', durationMult: 0.8 },
+            'slow_pan': { label: '标准推拉 (Standard)', ease: 'power1.inOut', durationMult: 1 },
+            'smooth_linear': { label: '线性匀速 (Linear)', ease: 'none', durationMult: 1 },
+            'instant_cut': { label: '硬切 (Instant)', ease: 'none', durationMult: 0.01 },
             'none': { label: '无运镜风格', ease: 'none', durationMult: 0 }
         };
 
@@ -1839,6 +1944,11 @@
                         // 1. Setup Current Scene Image
                         const img = scene.image;
                         img.visible = true;
+                        // IMPORTANT: Clear any leftover transition effects from previous runs
+                        img.clipPath = null;
+                        img.filters = [];
+                        if (img.applyFilters) img.applyFilters();
+
                         // Reset transform to center/scale
                         const scale = Math.min((this.canvas.getWidth() - 100) / img.width, (this.canvas.getHeight() - 100) / img.height);
                         // Store scale in data for transitions that might need it
@@ -1929,10 +2039,12 @@
                             targetZoom = Math.min(targetZoom, 5);
                             const tX = (this.canvas.getWidth() / 2) - (center.x * targetZoom);
                             const tY = (this.canvas.getHeight() / 2) - (center.y * targetZoom);
-
                             const moveDur = kf.duration * (camConfig.durationMult || 1);
+                            const target = { zoom: targetZoom, x: tX, y: tY };
 
-                            if (kf.camType === 'instant_cut') {
+                            if (camConfig.custom) {
+                                camConfig.custom(masterTl, cameraProxy, this.canvas, target, moveDur, undefined);
+                            } else if (kf.camType === 'instant_cut') {
                                 masterTl.set(cameraProxy, { zoom: targetZoom, x: tX, y: tY, onUpdate: () => this.canvas.setViewportTransform([cameraProxy.zoom, 0, 0, cameraProxy.zoom, cameraProxy.x, cameraProxy.y]) });
                             } else {
                                 masterTl.to(cameraProxy, { zoom: targetZoom, x: tX, y: tY, duration: moveDur, ease: camConfig.ease, onUpdate: () => this.canvas.setViewportTransform([cameraProxy.zoom, 0, 0, cameraProxy.zoom, cameraProxy.x, cameraProxy.y]) });
@@ -1983,14 +2095,21 @@
                 masterTl.call(() => {
                     gsap.ticker.remove(updateFn);
 
-                    // Reset all objects opacity and visibility
+                    // Reset all objects opacity, visibility, and transition leftovers
                     this.canvas.getObjects().forEach(obj => {
                         obj.opacity = 1;
                         obj.visible = true;
+                        // Restore from any transition side-effects
+                        if (obj.type === 'image' || (obj.data && obj.data.sceneId)) {
+                            obj.clipPath = null;
+                            if (obj.filters) obj.filters = [];
+                            if (obj.applyFilters) obj.applyFilters();
+                        }
                     });
 
                     this.updateCanvasVisibility();
                     this.canvas.setViewportTransform(initialVpt);
+                    this.centerActiveSceneImage(); // Ensure editor view is perfectly restored
                     this.canvas.requestRenderAll();
                 });
             }
