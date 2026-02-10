@@ -450,6 +450,88 @@
                     tl.add(sub, label);
                 }
             },
+            'click_ripple': {
+                label: '点击波纹',
+                create: (canvas) => {
+                    return new fabric.Circle({
+                        radius: 5,
+                        fill: 'transparent',
+                        stroke: '#10B981',
+                        strokeWidth: 4,
+                        originX: 'center', originY: 'center',
+                        opacity: 0,
+                        data: { type: 'click_ripple' }
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    const sub = gsap.timeline({ repeat: repeat - 1 });
+                    sub.set(obj, { opacity: 1, radius: 5, strokeWidth: 4 });
+                    sub.to(obj, { radius: 100, strokeWidth: 0, opacity: 0, duration: duration, ease: "power1.out" });
+                    tl.add(sub, label);
+                }
+            },
+            'hand_checkmark': {
+                label: '手绘对勾',
+                create: (canvas) => {
+                    const d = "M 10 55 L 45 85 L 110 15";
+                    return new fabric.Path(d, {
+                        fill: 'transparent',
+                        stroke: '#10B981',
+                        strokeWidth: 8,
+                        strokeLineCap: 'round',
+                        strokeLineJoin: 'round',
+                        objectCaching: false,
+                        data: { type: 'hand_checkmark' }
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    const len = 300;
+                    const sub = gsap.timeline({ repeat: repeat - 1 });
+                    sub.set(obj, { opacity: 1, strokeDashArray: [len, len], strokeDashOffset: len });
+                    sub.to(obj, { strokeDashOffset: 0, duration: duration, ease: "power2.inOut" });
+                    tl.add(sub, label);
+                }
+            },
+            'hand_cross': {
+                label: '手绘叉号',
+                create: (canvas) => {
+                    const d = "M 20 20 L 80 80 M 80 20 L 20 80";
+                    return new fabric.Path(d, {
+                        fill: 'transparent',
+                        stroke: '#EF4444',
+                        strokeWidth: 8,
+                        strokeLineCap: 'round',
+                        strokeLineJoin: 'round',
+                        objectCaching: false,
+                        data: { type: 'hand_cross' }
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    const len = 300;
+                    const sub = gsap.timeline({ repeat: repeat - 1 });
+                    sub.set(obj, { opacity: 1, strokeDashArray: [len, len], strokeDashOffset: len });
+                    sub.to(obj, { strokeDashOffset: 0, duration: duration, ease: "power2.inOut" });
+                    tl.add(sub, label);
+                }
+            },
+            'speech_bubble': {
+                label: '简洁对话框',
+                create: (canvas) => {
+                    const d = "M 20 20 H 180 V 120 H 60 L 20 150 V 120 H 20 Z";
+                    return new fabric.Path(d, {
+                        fill: 'rgba(255,255,255,0.9)',
+                        stroke: '#3B82F6',
+                        strokeWidth: 3,
+                        strokeLineJoin: 'round',
+                        data: { type: 'speech_bubble' }
+                    });
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    const sub = gsap.timeline({ repeat: repeat - 1 });
+                    sub.fromTo(obj, { scaleX: 0, scaleY: 0, opacity: 0 }, { scaleX: 1, scaleY: 1, opacity: 1, duration: duration, ease: "back.out(1.7)" });
+                    tl.add(sub, label);
+                }
+            },
             'spotlight_focus': {
                 label: '聚光灯聚焦',
                 create: (canvas) => {
