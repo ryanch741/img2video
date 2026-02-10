@@ -323,6 +323,30 @@
             return `rgba(${r},${g},${b},${opacity})`;
         }
 
+        // --- Helper: Generate Small Thumbnail ---
+        function generateThumbnail(dataUrl, maxWidth, maxHeight, callback) {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                const ratio = Math.min(maxWidth / width, maxHeight / height);
+                if (ratio < 1) {
+                    width *= ratio;
+                    height *= ratio;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                // Use JPEG with 0.6 quality for very small size
+                callback(canvas.toDataURL('image/jpeg', 0.6));
+            };
+            img.src = dataUrl;
+        }
+
         // --- Font Registry ---
         const FontRegistry = {
             'Noto Sans SC': '标准黑体 (Web)',
@@ -775,41 +799,42 @@
                 const reader = new FileReader();
                 reader.onload = (f) => {
                     const imgDataUrl = f.target.result;
-                    fabric.Image.fromURL(imgDataUrl, (img) => {
-                        const sceneId = Date.now();
+                    // Generate a tiny thumbnail for the UI list to avoid duplicating full-res data in project files
+                    generateThumbnail(imgDataUrl, 120, 120, (thumbUrl) => {
+                        fabric.Image.fromURL(imgDataUrl, (img) => {
+                            const sceneId = Date.now();
 
-                        img.set({
-                            selectable: false,
-                            evented: false,
-                            hoverCursor: 'default',
-                            originX: 'center',
-                            originY: 'center',
-                            data: { sceneId: sceneId }
+                            img.set({
+                                selectable: false,
+                                evented: false,
+                                hoverCursor: 'default',
+                                originX: 'center',
+                                originY: 'center',
+                                data: { sceneId: sceneId }
+                            });
+
+                            // Fit to canvas
+                            const scale = Math.min((this.canvas.getWidth() - 100) / img.width, (this.canvas.getHeight() - 100) / img.height);
+                            img.set({
+                                scaleX: scale,
+                                scaleY: scale,
+                                left: this.canvas.getWidth() / 2,
+                                top: this.canvas.getHeight() / 2
+                            });
+
+                            const newScene = {
+                                id: sceneId,
+                                name: `场景 ${this.scenes.length + 1}`,
+                                image: img,
+                                keyframes: [],
+                                thumbnail: thumbUrl, // Now a tiny compressed version
+                                transitionType: 'fade'
+                            };
+
+                            this.scenes.push(newScene);
+                            this.canvas.add(img);
+                            this.switchScene(sceneId);
                         });
-
-                        // Fit to canvas
-                        const scale = Math.min((this.canvas.getWidth() - 100) / img.width, (this.canvas.getHeight() - 100) / img.height);
-                        img.set({
-                            scaleX: scale,
-                            scaleY: scale,
-                            left: this.canvas.getWidth() / 2,
-                            top: this.canvas.getHeight() / 2
-                        });
-
-                        const newScene = {
-                            id: sceneId,
-                            name: `场景 ${this.scenes.length + 1}`,
-                            image: img,
-                            keyframes: [],
-                            thumbnail: imgDataUrl,
-                            transitionType: 'fade' // Default transition
-                        };
-
-                        this.scenes.push(newScene);
-
-                        this.canvas.add(img);
-                        // Natural order is correct: Image then its annotations
-                        this.switchScene(sceneId);
                     });
                 };
                 reader.readAsDataURL(file);
