@@ -1910,74 +1910,80 @@
                     return;
                 }
 
-                const outtroObj = this.canvas.getObjects().find(o => o.data && o.data.type === 'outtro');
+                const defaultName = `promotion_project_${Date.now()}`;
+                this.showModal("请输入保存的文件名", 'prompt', (fileName) => {
+                    if (!fileName || !fileName.trim()) return;
 
-                const projectData = {
-                    version: "1.0",
-                    timestamp: Date.now(),
-                    scenes: this.scenes.map(s => {
-                        return {
-                            id: s.id,
-                            name: s.name,
-                            thumbnail: s.thumbnail, // Base64
-                            transitionType: s.transitionType,
-                            imageSrc: s.image.getSrc(), // Base64
-                            keyframes: s.keyframes.map(kf => {
-                                // Use loose equality for ID matching to handle string/number discrepancies from JSON
-                                const annotObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type !== 'text_label');
-                                const annotProps = annotObj ? {
-                                    left: annotObj.left,
-                                    top: annotObj.top,
-                                    scaleX: annotObj.scaleX,
-                                    scaleY: annotObj.scaleY,
-                                    width: annotObj.width,
-                                    height: annotObj.height,
-                                    angle: annotObj.angle
-                                } : null;
+                    const outtroObj = this.canvas.getObjects().find(o => o.data && o.data.type === 'outtro');
 
-                                const textObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type === 'text_label');
-                                const textProps = textObj ? {
-                                    left: textObj.left,
-                                    top: textObj.top,
-                                    scaleX: textObj.scaleX,
-                                    scaleY: textObj.scaleY,
-                                    angle: textObj.angle
-                                } : null;
+                    const projectData = {
+                        version: "1.0",
+                        timestamp: Date.now(),
+                        scenes: this.scenes.map(s => {
+                            return {
+                                id: s.id,
+                                name: s.name,
+                                thumbnail: s.thumbnail, // Base64
+                                transitionType: s.transitionType,
+                                imageSrc: s.image.getSrc(), // Base64
+                                keyframes: s.keyframes.map(kf => {
+                                    // Use loose equality for ID matching to handle string/number discrepancies from JSON
+                                    const annotObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type !== 'text_label');
+                                    const annotProps = annotObj ? {
+                                        left: annotObj.left,
+                                        top: annotObj.top,
+                                        scaleX: annotObj.scaleX,
+                                        scaleY: annotObj.scaleY,
+                                        width: annotObj.width,
+                                        height: annotObj.height,
+                                        angle: annotObj.angle
+                                    } : null;
 
-                                return {
-                                    config: { ...kf, name: kf.name },
-                                    annotProps: annotProps,
-                                    textProps: textProps
-                                };
-                            })
-                        };
-                    }),
-                    outtro: {
-                        enabled: document.getElementById('endWithFullView').checked,
-                        text: document.getElementById('outtroText').value,
-                        duration: document.getElementById('outtroDuration').value,
-                        font: document.getElementById('outtroFont').value,
-                        textColor: document.getElementById('outtroTextColor').value,
-                        strokeColor: document.getElementById('outtroStrokeColor').value,
-                        strokeWidth: document.getElementById('outtroStrokeWidth').value,
-                        bgColor: document.getElementById('outtroBgColor').value,
-                        bgOpacity: document.getElementById('outtroBgOpacity').value,
-                        fontSize: document.getElementById('outtroFontSize').value,
-                        left: outtroObj ? outtroObj.left : null,
-                        top: outtroObj ? outtroObj.top : null,
-                        scaleX: outtroObj ? outtroObj.scaleX : null,
-                        scaleY: outtroObj ? outtroObj.scaleY : null,
-                        angle: outtroObj ? outtroObj.angle : null
-                    }
-                };
+                                    const textObj = this.canvas.getObjects().find(o => o.data && o.data.id == kf.id && o.data.type === 'text_label');
+                                    const textProps = textObj ? {
+                                        left: textObj.left,
+                                        top: textObj.top,
+                                        scaleX: textObj.scaleX,
+                                        scaleY: textObj.scaleY,
+                                        angle: textObj.angle
+                                    } : null;
 
-                const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `promotion_project_${Date.now()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
+                                    return {
+                                        config: { ...kf, name: kf.name },
+                                        annotProps: annotProps,
+                                        textProps: textProps
+                                    };
+                                })
+                            };
+                        }),
+                        outtro: {
+                            enabled: document.getElementById('endWithFullView').checked,
+                            text: document.getElementById('outtroText').value,
+                            duration: document.getElementById('outtroDuration').value,
+                            font: document.getElementById('outtroFont').value,
+                            textColor: document.getElementById('outtroTextColor').value,
+                            strokeColor: document.getElementById('outtroStrokeColor').value,
+                            strokeWidth: document.getElementById('outtroStrokeWidth').value,
+                            bgColor: document.getElementById('outtroBgColor').value,
+                            bgOpacity: document.getElementById('outtroBgOpacity').value,
+                            fontSize: document.getElementById('outtroFontSize').value,
+                            left: outtroObj ? outtroObj.left : null,
+                            top: outtroObj ? outtroObj.top : null,
+                            scaleX: outtroObj ? outtroObj.scaleX : null,
+                            scaleY: outtroObj ? outtroObj.scaleY : null,
+                            angle: outtroObj ? outtroObj.angle : null
+                        }
+                    };
+
+                    const finalFileName = fileName.trim().endsWith('.json') ? fileName.trim() : fileName.trim() + '.json';
+                    const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = finalFileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }, defaultName);
             }
 
             // --- Custom Modal Helper ---
