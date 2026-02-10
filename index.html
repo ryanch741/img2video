@@ -297,6 +297,9 @@
             class="bg-gray-800 border border-gray-700 rounded-lg shadow-2xl w-96 p-6 transform transition-all scale-100">
             <h3 id="modalTitle" class="text-lg font-bold text-white mb-2">提示</h3>
             <p id="modalMessage" class="text-gray-300 text-sm mb-6 leading-relaxed">Message content...</p>
+            <input id="modalInput" type="text"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm mb-6 hidden focus:ring-1 focus:ring-blue-500 outline-none"
+                placeholder="请输入...">
             <div class="flex justify-end gap-3">
                 <button id="modalCancelBtn"
                     class="px-4 py-2 rounded text-gray-400 hover:text-white hover:bg-gray-700 text-sm transition hidden border border-gray-600">取消</button>
@@ -795,6 +798,7 @@
 
                         const newScene = {
                             id: sceneId,
+                            name: `场景 ${this.scenes.length + 1}`,
                             image: img,
                             keyframes: [],
                             thumbnail: imgDataUrl,
@@ -820,6 +824,17 @@
 
                 this.renderTimelineUI();
                 this.canvas.requestRenderAll();
+            }
+
+            renameScene(sceneId) {
+                const scene = this.scenes.find(s => s.id == sceneId);
+                if (!scene) return;
+                this.showModal("修改场景名称", 'prompt', (newName) => {
+                    if (newName && newName.trim()) {
+                        scene.name = newName.trim();
+                        this.renderTimelineUI();
+                    }
+                }, scene.name);
             }
 
             switchToOuttro() {
@@ -1018,8 +1033,10 @@
                 const keyframeId = Date.now();
                 fabricObj.set('data', { ...fabricObj.data, id: keyframeId, sceneId: activeScene.id });
 
+                const annotLabel = AnnotationRegistry[annotType].label;
                 const keyframeData = {
                     id: keyframeId,
+                    name: `${annotLabel} ${activeScene.keyframes.length + 1}`,
                     annotType: annotType,
                     camType: camType,
                     duration: 1.5,
@@ -1064,6 +1081,22 @@
                 else if (txt) this.canvas.setActiveObject(txt);
 
                 this.canvas.requestRenderAll();
+            }
+
+            renameKeyframe(kfId) {
+                let kf = null;
+                for (const s of this.scenes) {
+                    kf = s.keyframes.find(k => k.id == kfId);
+                    if (kf) break;
+                }
+                if (!kf) return;
+
+                this.showModal("修改帧动作名称", 'prompt', (newName) => {
+                    if (newName && newName.trim()) {
+                        kf.name = newName.trim();
+                        this.renderTimelineUI();
+                    }
+                }, kf.name);
             }
 
             deleteKeyframe(sceneId, kfId) {
@@ -1154,8 +1187,18 @@
                     thumb.className = "w-8 h-8 object-cover rounded border border-gray-600";
 
                     const titleSpan = document.createElement('span');
-                    titleSpan.className = "text-sm font-bold text-gray-200";
-                    titleSpan.textContent = `场景 ${sIdx + 1}`;
+                    titleSpan.className = "text-sm font-bold text-gray-200 truncate flex-1";
+                    titleSpan.textContent = scene.name || `场景 ${sIdx + 1}`;
+
+                    const editBtn = document.createElement('button');
+                    editBtn.className = "text-gray-500 hover:text-blue-400 p-1 opacity-0 group-hover:opacity-100 transition";
+                    editBtn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>';
+                    editBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        this.renameScene(scene.id);
+                    };
+
+                    header.classList.add('group'); // For opacity-0 group-hover
 
                     const countSpan = document.createElement('span');
                     countSpan.className = "text-xs text-gray-500";
@@ -1163,6 +1206,7 @@
 
                     leftDiv.appendChild(thumb);
                     leftDiv.appendChild(titleSpan);
+                    leftDiv.appendChild(editBtn);
                     leftDiv.appendChild(countSpan);
 
                     // Right: Controls
@@ -1259,9 +1303,13 @@
                 const header = `
                 <div class="flex justify-between items-center p-2 cursor-pointer bg-gray-800 hover:bg-gray-750 transition border-b border-gray-700 ${isActive ? 'bg-gray-750' : ''}"
                      onclick="window.app.selectKeyframe(${scene.id}, ${kf.id})">
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 overflow-hidden flex-1">
                         <span class="transform transition-transform duration-200 text-gray-400 ${isActive ? 'rotate-90 text-blue-400' : ''} text-xs">▶</span>
-                        <span class="font-bold text-xs ${isActive ? 'text-blue-400' : 'text-gray-300'}">#${index + 1} ${annotLabel}</span>
+                        <span class="font-bold text-xs truncate ${isActive ? 'text-blue-400' : 'text-gray-300'}">${kf.name || '#' + (index + 1) + ' ' + annotLabel}</span>
+                        <button class="text-gray-500 hover:text-blue-400 p-0.5 opacity-0 group-hover:opacity-100 transition"
+                                onclick="event.stopPropagation(); window.app.renameKeyframe(${kf.id})">
+                             <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        </button>
                     </div>
                     <button class="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition p-1"
                             onclick="event.stopPropagation(); window.app.deleteKeyframe(${scene.id}, ${kf.id})">
@@ -1870,6 +1918,7 @@
                     scenes: this.scenes.map(s => {
                         return {
                             id: s.id,
+                            name: s.name,
                             thumbnail: s.thumbnail, // Base64
                             transitionType: s.transitionType,
                             imageSrc: s.image.getSrc(), // Base64
@@ -1896,7 +1945,7 @@
                                 } : null;
 
                                 return {
-                                    config: kf,
+                                    config: { ...kf, name: kf.name },
                                     annotProps: annotProps,
                                     textProps: textProps
                                 };
@@ -1929,6 +1978,68 @@
                 a.download = `promotion_project_${Date.now()}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
+            }
+
+            // --- Custom Modal Helper ---
+            showModal(message, type = 'alert', onConfirm = null, defaultValue = '') {
+                const modal = document.getElementById('customModal');
+                const msgEl = document.getElementById('modalMessage');
+                const titleEl = document.getElementById('modalTitle');
+                const inputEl = document.getElementById('modalInput');
+                const cancelBtn = document.getElementById('modalCancelBtn');
+                const confirmBtn = document.getElementById('modalConfirmBtn');
+
+                if (!modal) return;
+
+                msgEl.textContent = message;
+                inputEl.classList.add('hidden');
+                inputEl.value = defaultValue;
+
+                // Reset Buttons (Clone to clear events)
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+                const newCancelBtn = cancelBtn.cloneNode(true);
+                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+                const closeModal = () => modal.classList.add('hidden');
+
+                if (type === 'prompt') {
+                    titleEl.textContent = '输入内容';
+                    inputEl.classList.remove('hidden');
+                    newCancelBtn.classList.remove('hidden');
+                    newCancelBtn.onclick = closeModal;
+
+                    newConfirmBtn.textContent = '确定';
+                    newConfirmBtn.className = "px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-lg transition";
+                    newConfirmBtn.onclick = () => {
+                        const val = inputEl.value;
+                        closeModal();
+                        if (onConfirm) onConfirm(val);
+                    };
+                    // Focus input
+                    setTimeout(() => inputEl.focus(), 100);
+                } else if (type === 'confirm') {
+                    titleEl.textContent = '确认操作';
+                    newCancelBtn.classList.remove('hidden');
+                    newCancelBtn.onclick = closeModal;
+
+                    newConfirmBtn.textContent = '确认';
+                    newConfirmBtn.className = "px-4 py-2 rounded bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-lg transition";
+                    newConfirmBtn.onclick = () => {
+                        closeModal();
+                        if (onConfirm) onConfirm();
+                    };
+                } else {
+                    titleEl.textContent = '提示';
+                    newCancelBtn.classList.add('hidden');
+
+                    newConfirmBtn.textContent = '确定';
+                    newConfirmBtn.className = "px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-lg transition";
+                    newConfirmBtn.onclick = closeModal;
+                }
+
+                modal.classList.remove('hidden');
             }
 
             loadProject(file) {
@@ -2026,9 +2137,9 @@
                         top: this.canvas.getHeight() / 2
                     });
 
-                    // Reconstruct Scene Object
                     const newScene = {
                         id: sData.id,
+                        name: sData.name || `场景 ${index + 1}`,
                         image: img,
                         keyframes: [], // Will fill below
                         thumbnail: sData.thumbnail,
