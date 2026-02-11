@@ -253,17 +253,20 @@
                     </div>
                 </div>
 
-                <button id="exportBtn"
-                    class="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg shadow-lg transform hover:scale-[1.02] transition flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
-                        </path>
-                    </svg>
-                    生成演示视频
-                </button>
+
+                <div class="space-y-3">
+                    <button id="exportBtn"
+                        class="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg shadow-lg transform hover:scale-[1.02] transition flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        生成演示视频
+                    </button>
+                </div>
             </div>
-        </div>
+        </div> <!-- End Sidebar -->
 
         <!-- Right: Canvas Area -->
         <div class="flex-1 bg-gray-950 relative flex flex-col h-full overflow-hidden">
@@ -275,14 +278,15 @@
 
             <!-- Canvas Wrapper -->
             <div id="canvasWrapper"
-                class="flex-1 flex items-center justify-center overflow-hidden w-full h-full p-8 bg-grid-pattern">
+                class="flex-1 flex items-center justify-center overflow-hidden w-full h-full p-8 bg-grid-pattern relative">
                 <canvas id="mainCanvas"></canvas>
             </div>
 
             <!-- Loading Overlay -->
             <div id="processingOverlay"
                 class="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center hidden">
-                <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+                <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4">
+                </div>
                 <h2 class="text-xl font-bold text-white">正在渲染视频...</h2>
                 <p class="text-gray-400 text-sm mt-2">请勿切换窗口 (渲染多场景中)</p>
             </div>
@@ -296,7 +300,8 @@
         <div
             class="bg-gray-800 border border-gray-700 rounded-lg shadow-2xl w-96 p-6 transform transition-all scale-100">
             <h3 id="modalTitle" class="text-lg font-bold text-white mb-2">提示</h3>
-            <p id="modalMessage" class="text-gray-300 text-sm mb-6 leading-relaxed">Message content...</p>
+            <p id="modalMessage" class="text-gray-300 text-sm mb-6 leading-relaxed">Message content...
+            </p>
             <input id="modalInput" type="text"
                 class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm mb-6 hidden focus:ring-1 focus:ring-blue-500 outline-none"
                 placeholder="请输入...">
@@ -514,60 +519,6 @@
                     tl.add(sub, label);
                 }
             },
-            'speech_bubble': {
-                label: '简洁对话框',
-                create: (canvas) => {
-                    const d = "M 20 20 H 180 V 120 H 60 L 20 150 V 120 H 20 Z";
-                    return new fabric.Path(d, {
-                        fill: 'rgba(255,255,255,0.9)',
-                        stroke: '#3B82F6',
-                        strokeWidth: 3,
-                        strokeLineJoin: 'round',
-                        data: { type: 'speech_bubble' }
-                    });
-                },
-                animate: (tl, obj, repeat, duration, label) => {
-                    const sub = gsap.timeline({ repeat: repeat - 1 });
-                    sub.fromTo(obj, { scaleX: 0, scaleY: 0, opacity: 0 }, { scaleX: 1, scaleY: 1, opacity: 1, duration: duration, ease: "back.out(1.7)" });
-                    tl.add(sub, label);
-                }
-            },
-            'spotlight_focus': {
-                label: '聚光灯聚焦',
-                create: (canvas) => {
-                    return new fabric.Circle({
-                        radius: 80,
-                        fill: 'rgba(255,255,255,0.1)',
-                        stroke: '#ffffff',
-                        strokeWidth: 2,
-                        strokeDashArray: [10, 5],
-                        data: { type: 'spotlight_focus' }
-                    });
-                },
-                animate: (tl, obj, repeat, duration, label) => {
-                    const objCenter = obj.getCenterPoint();
-                    const overlay = new fabric.Rect({
-                        left: -10000, top: -10000, width: 50000, height: 50000,
-                        fill: 'rgba(0,0,0,0.7)',
-                        selectable: false, evented: false
-                    });
-
-                    tl.call(() => {
-                        const hole = new fabric.Circle({
-                            left: objCenter.x, top: objCenter.y,
-                            radius: obj.radius * obj.scaleX,
-                            originX: 'center', originY: 'center'
-                        });
-                        hole.inverted = true;
-                        overlay.clipPath = hole;
-                        obj.canvas.add(overlay);
-                        obj.canvas.bringToFront(overlay);
-                    }, null, label);
-
-                    tl.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: duration }, label);
-                    return overlay;
-                }
-            },
             'invisible_frame': {
                 label: '隐形框 (纯运镜)',
                 create: (canvas) => {
@@ -585,6 +536,29 @@
                     });
                 },
                 animate: (tl, obj, repeat, duration, label) => {
+                }
+            },
+            'step_badge': {
+                label: '步骤编号 (1-2-3)',
+                create: (canvas, text = "1") => {
+                    const circle = new fabric.Circle({ radius: 25, fill: '#10B981', originX: 'center', originY: 'center', shadow: 'rgba(0,0,0,0.2) 0 4px 8px' });
+                    const txtObj = new fabric.Text(String(text), {
+                        fontSize: 30, fill: '#ffffff', fontFamily: 'Arial', fontWeight: 'bold', originX: 'center', originY: 'center', left: 0, top: 0
+                    });
+                    return new fabric.Group([circle, txtObj], { originX: 'center', originY: 'center', data: { type: 'step_badge' } });
+                },
+                update: (obj, kf) => {
+                    const txt = obj.getObjects()[1];
+                    if (txt && kf.textLabel) {
+                        txt.set('text', String(kf.textLabel).substring(0, 3)); // Max 3 chars
+                        obj.addWithUpdate();
+                    }
+                },
+                animate: (tl, obj, repeat, duration, label) => {
+                    const sub = gsap.timeline({ repeat: repeat - 1 });
+                    sub.fromTo(obj, { scaleX: 0, scaleY: 0, opacity: 0 }, { scaleX: 1, scaleY: 1, opacity: 1, duration: 0.6, ease: "back.out(1.7)" });
+                    sub.to(obj, { scaleX: 1.1, scaleY: 1.1, duration: 0.3, yoyo: true, repeat: 1, ease: "sine.inOut" }, "+=0.5");
+                    tl.add(sub, label);
                 }
             },
             'none': {
@@ -955,6 +929,7 @@
                     }
                 }
 
+
                 // Modal Close on Background Click (Optional)
                 const modal = document.getElementById('customModal');
                 if (modal) {
@@ -1026,6 +1001,7 @@
                 };
                 reader.readAsDataURL(file);
             }
+
 
             switchScene(sceneId) {
                 this.activeSceneId = sceneId;
@@ -1196,6 +1172,7 @@
                             if (obj.data.id == this.activeKeyframeId) {
                                 obj.set({ visible: true, opacity: 1 });
                                 obj.set({ selectable: true, evented: true });
+                                obj.bringToFront(); // Ensure active annotation is on top of background
                                 // console.log('  -> Showing Active KF Obj:', obj.data.id);
                             } else {
                                 obj.set({ visible: false });
@@ -1246,6 +1223,16 @@
                 fabricObj.set('data', { ...fabricObj.data, id: keyframeId, sceneId: activeScene.id });
 
                 const annotLabel = AnnotationRegistry[annotType].label;
+
+                // Smart default for textLabel
+                let defaultText = '点击输入文字...';
+                if (annotType === 'step_badge') {
+                    const badgeCount = activeScene.keyframes.filter(k => k.annotType === 'step_badge').length;
+                    defaultText = String(badgeCount + 1);
+                } else if (annotType === 'keyboard_key') {
+                    defaultText = 'Enter';
+                }
+
                 const keyframeData = {
                     id: keyframeId,
                     name: `${annotLabel} ${activeScene.keyframes.length + 1}`,
@@ -1258,9 +1245,9 @@
                     resetFirst: false,
                     resetCamType: 'slow_pan',
                     resetHold: 1.0,
-                    hasText: false,
+                    hasText: (annotType === 'step_badge' || annotType === 'keyboard_key'), // Auto-enable text for these
                     isFixed: false,
-                    textLabel: '点击输入文字...',
+                    textLabel: defaultText,
                     textColor: '#FACC15',
                     textStrokeColor: '#000000',
                     textStrokeWidth: 4,
@@ -1272,9 +1259,14 @@
                 activeScene.keyframes.push(keyframeData);
                 this.activeKeyframeId = keyframeId;
 
+                // Sync the internal text immediately after creation
+                this.updateCanvasAnnotationObject(keyframeId, keyframeData);
+
                 this.renderTimelineUI();
                 this.updateCanvasVisibility();
+                fabricObj.bringToFront(); // Immediate feedback
                 this.canvas.setActiveObject(fabricObj);
+                this.canvas.requestRenderAll();
             }
 
             selectKeyframe(sceneId, kfId) {
@@ -1657,11 +1649,21 @@
                     kf[field] = value;
                     if (['textLabel', 'textColor', 'textBgColor', 'textBgOpacity', 'textStrokeColor', 'textStrokeWidth', 'fontFamily'].includes(field)) {
                         this.updateCanvasTextObject(id, kf);
+                        // Also update internal annotation text if registry supports it (e.g. for step_badge and keyboard_key)
+                        this.updateCanvasAnnotationObject(id, kf);
                     }
                 } else if (field === 'repeatCount') {
                     kf[field] = parseInt(value) || 1;
                 } else {
                     kf[field] = parseFloat(value);
+                }
+            }
+
+            updateCanvasAnnotationObject(id, kf) {
+                const obj = this.canvas.getObjects().find(o => o.data && o.data.id == id && o.data.type !== 'text_label');
+                if (obj && AnnotationRegistry[kf.annotType] && AnnotationRegistry[kf.annotType].update) {
+                    AnnotationRegistry[kf.annotType].update(obj, kf);
+                    this.canvas.requestRenderAll();
                 }
             }
 
