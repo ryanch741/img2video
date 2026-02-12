@@ -77,18 +77,25 @@
         <div class="w-1/4 bg-gray-800 border-r border-gray-700 flex flex-col shadow-xl z-10 h-full max-h-screen">
             <!-- Header -->
             <div class="p-4 border-b border-gray-700 bg-gray-900 flex-shrink-0">
-                <h1
-                    class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400 mb-2">
-                    灵动演示工坊 Pro
-                </h1>
+                <div class="flex justify-between items-center mb-2">
+                    <h1 id="appTitle"
+                        class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
+                        ProMotion Studio Pro
+                    </h1>
+                    <button onclick="window.app.toggleLanguage()"
+                        class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition border border-gray-600"
+                        title="Switch Language / 切换语言">
+                        🌐 <span id="langLabel">EN</span>
+                    </button>
+                </div>
                 <div class="flex gap-2">
                     <button onclick="document.getElementById('projectUpload').click()"
                         class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs font-bold transition flex items-center gap-1 border border-gray-600">
-                        📂 打开项目
+                        <span id="btnOpenProject">📂 Open Project</span>
                     </button>
                     <button onclick="window.app.exportProject()"
                         class="px-3 py-1.5 bg-blue-700 hover:bg-blue-600 rounded text-xs font-bold transition flex items-center gap-1 border border-blue-500 shadow-lg">
-                        💾 保存项目
+                        <span id="btnSaveProject">💾 Save Project</span>
                     </button>
                     <input type="file" id="projectUpload" accept=".json" class="hidden"
                         onchange="window.app.loadProject(this.files[0])">
@@ -303,6 +310,134 @@
 
     <!-- MAIN APPLICATION SCRIPT -->
     <script>
+        // --- Internationalization (i18n) System ---
+        const i18n = {
+            en: {
+                appTitle: 'ProMotion Studio Pro',
+                btnOpenProject: '📂 Open Project',
+                btnSaveProject: '💾 Save Project',
+                addScene: '1. Add Scene',
+                uploadImageBtn: 'Upload Image to Add New Scene',
+                addKeyframe: '2. Add Keyframe (Current Scene)',
+                annotationStyle: 'Annotation Style',
+                cameraStyle: 'Camera Style',
+                addToSceneBtn: '+ Add to Current Scene',
+                sceneTimeline: '3. Scene Timeline',
+                scenesCount: 'Scenes',
+                uploadHint: 'Please upload an image to start...',
+                endWithFullView: 'End with Full View (Outtro)',
+                outtroText: 'Outtro Text',
+                outtroTextPlaceholder: 'e.g., Thank you for watching',
+                fontSize: 'Font Size',
+                duration: 'Duration',
+                seconds: 's',
+                font: 'Font',
+                textColor: 'Text Color',
+                bgColor: 'Background Color',
+                stroke: 'Stroke',
+                bgOpacity: 'BG Opacity',
+                generateVideoBtn: 'Generate Demo Video',
+                canvasHint: '💡 Tip: Switch scenes to edit different images. Starting from the 2nd scene, you can set transition effects.',
+                processingTitle: 'Rendering Video...',
+                processingHint: 'Please do not switch windows (rendering multiple scenes)',
+                modalTitle: 'Prompt',
+                modalConfirm: 'OK',
+                modalCancel: 'Cancel',
+                noScenesAlert: 'Please add at least one scene first',
+                deleteSceneConfirm: 'Are you sure you want to delete the entire scene? All keyframes will be removed.',
+                renameScene: 'Rename Scene',
+                renameKeyframe: 'Rename Keyframe Action',
+                noProjectAlert: 'No scenes to save',
+                saveProjectPrompt: 'Please enter the file name',
+                projectLoadSuccess: 'Project loaded successfully!',
+                projectLoadError: 'Unable to read project file, format may be incorrect.',
+                addNarrationBtn: '➕ Add Narration Text',
+                narrationLabel: '📝 Text Narration',
+                deleteBtn: 'Delete',
+                subtitleMode: 'Subtitle Mode (Fixed on Screen)',
+                strokeWidth: 'Stroke Width',
+                transparency: 'Transparency',
+                cameraDuration: 'Camera(s)',
+                holdDuration: 'Hold(s)',
+                annotDuration: 'Annot(s)',
+                repeatCount: 'Repeat',
+                entryMode: 'Entry Mode:',
+                directEntry: 'Direct',
+                resetEntry: 'Reset',
+                startPause: 'Pause',
+                resetStyle: 'Reset Style',
+                resetHold: 'Reset Hold',
+                transitionEffect: '↻ Transition:',
+                deleteScene: 'Delete Scene',
+                noKeyframes: 'No keyframes yet, please add above'
+            },
+            zh: {
+                appTitle: '灵动演示工坊 Pro',
+                btnOpenProject: '📂 打开项目',
+                btnSaveProject: '💾 保存项目',
+                addScene: '1. 添加场景 (Scene)',
+                uploadImageBtn: '上传图片添加新场景',
+                addKeyframe: '2. 添加关键帧 (当前场景)',
+                annotationStyle: '标注样式',
+                cameraStyle: '运镜风格',
+                addToSceneBtn: '+ 添加到当前场景',
+                sceneTimeline: '3. 场景时间轴',
+                scenesCount: '场景',
+                uploadHint: '请上传图片开始...',
+                endWithFullView: '结束时回到全景 (Outtro)',
+                outtroText: '片尾文字',
+                outtroTextPlaceholder: '例如: 谢谢观看',
+                fontSize: '文字大小',
+                duration: '停留时长',
+                seconds: '秒',
+                font: '字体',
+                textColor: '文字颜色',
+                bgColor: '背景颜色',
+                stroke: '描边',
+                bgOpacity: '背景透明',
+                generateVideoBtn: '生成演示视频',
+                canvasHint: '💡 提示: 切换场景可编辑不同底图。第二个场景起可设置转场动画。',
+                processingTitle: '正在渲染视频...',
+                processingHint: '请勿切换窗口 (渲染多场景中)',
+                modalTitle: '提示',
+                modalConfirm: '确定',
+                modalCancel: '取消',
+                noScenesAlert: '请先添加至少一个场景',
+                deleteSceneConfirm: '确定要删除整个场景吗？包含所有关键帧。',
+                renameScene: '修改场景名称',
+                renameKeyframe: '修改帧动作名称',
+                noProjectAlert: '当前没有场景可保存',
+                saveProjectPrompt: '请输入保存的文件名',
+                projectLoadSuccess: '项目加载成功！',
+                projectLoadError: '无法读取项目文件，格式可能不正确。',
+                addNarrationBtn: '➕ 添加解说文字',
+                narrationLabel: '📝 文字解说',
+                deleteBtn: '删除',
+                subtitleMode: '字幕模式 (固定屏幕)',
+                strokeWidth: '描边粗细',
+                transparency: '透明度',
+                cameraDuration: '运镜(s)',
+                holdDuration: '停留(s)',
+                annotDuration: '标注(s)',
+                repeatCount: '动画次数',
+                entryMode: '入场方式 (Entry):',
+                directEntry: '直接推进 (Direct)',
+                resetEntry: '先回全景 (Reset)',
+                startPause: '开场停留 (Pause)',
+                resetStyle: '复位风格',
+                resetHold: '复位停留',
+                transitionEffect: '↻ 进场效果:',
+                deleteScene: '删除场景',
+                noKeyframes: '暂无关键帧，请点击上方添加'
+            }
+        };
+
+        let currentLang = localStorage.getItem('appLang') || 'en';
+
+        function t(key) {
+            return i18n[currentLang][key] || key;
+        }
+
         // --- Helper: Hex + Opacity to RGBA ---
         function hexToRgba(hex, opacity) {
             let c = hex.replace('#', '');
@@ -788,6 +923,7 @@
                 this.initUI();
                 this.initCanvas();
                 this.bindEvents();
+                this.updateUILanguage(); // Apply saved language
             }
 
             initUI() {
@@ -2487,6 +2623,40 @@
                     angle: finalProps.angle
                 });
                 group.setCoords();
+            }
+
+            // --- Language Toggle ---
+            toggleLanguage() {
+                currentLang = currentLang === 'en' ? 'zh' : 'en';
+                localStorage.setItem('appLang', currentLang);
+                this.updateUILanguage();
+                this.renderTimelineUI(); // Re-render timeline with new language
+            }
+
+            updateUILanguage() {
+                // Update language label
+                const langLabel = document.getElementById('langLabel');
+                if (langLabel) langLabel.textContent = currentLang === 'en' ? 'EN' : '中文';
+
+                // Update static UI elements
+                const updates = {
+                    'appTitle': t('appTitle'),
+                    'btnOpenProject': t('btnOpenProject'),
+                    'btnSaveProject': t('btnSaveProject')
+                };
+
+                Object.keys(updates).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = updates[id];
+                });
+
+                // Update other text elements that need translation
+                this.updateDynamicLabels();
+            }
+
+            updateDynamicLabels() {
+                // This will be called when rendering timeline and other dynamic content
+                // The actual translations will be applied in renderTimelineUI and other methods
             }
         }
 

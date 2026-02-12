@@ -1,78 +1,92 @@
-# ProMotion Studio (灵动演示工坊 Pro)
+# ProMotion Studio
 
-**ProMotion Studio** 一款专为自媒体、教育工作者和产品经理打造的 **高颜值演示视频制作工具**。
+[中文文档](./README.zh-CN.md) | English
 
-它能帮助你将枯燥的 **图片/截图** 在短短几分钟内，转化为具有 **专业运镜、手绘动态标注和场景转场** 的精美演示视频。
+**ProMotion Studio** is a powerful yet lightweight demonstration video creation tool designed for content creators, educators, and product managers.
 
----
-
-## ✨ 核心亮点
-
-### 1. 🎬 简单拖拽，大片既视感
-无需复杂的剪辑软件。仅需上传图片，添加 **关键帧**，即可自动生成如同电影般的 **推拉摇移** 运镜效果。
-*   内置 **强力震击 (Impact Shake)**、**机械弹簧 (Spring Bounce)**、**心跳律动 (Heartbeat)** 等 10+ 种专业运镜风格。
-*   让你的演示不再只是 PPT 翻页，而是充满动态张力。
-
-### 2. 🖊️ 手绘风格动态标注
-告别死板的红色方框！内置多款 **手绘风格** 标注组件，每一笔都带有自然的描绘动画：
-*   ✅ **手绘方框/红圈**：重点内容一圈即中。
-*   ✨ **荧光笔高亮**：模拟真实记号笔的强调效果。
-*   🌊 **波浪下划线**：优雅地划出文案重点。
-*   🔢 **步骤编号徽章**：自动生成 1, 2, 3... 序号，清晰引导观众视线。
-
-### 3. 📝 智能解说字幕
-演示不仅要“看”，还要“说”。
-*   **随动字幕**：为每个画面添加解释性文字，字幕可跟随运镜移动。
-*   **固定字幕模式**：勾选后，文字将固定在屏幕下方（类似电影字幕），让解说更加沉浸。
-*   **多款字体**：内置 **快乐酷黑、毛笔书法、标准黑体** 等多款精美中文字体，无需安装即可直接使用。
-
-### 4. 🔄 多场景无缝衔接
-*   支持在一个项目中添加 **多张底图**（例如：App 首页 -> 详情页 -> 个人中心）。
-*   提供 **淡入淡出、推入、穿梭放大** 等多种转场特效，让场景切换丝般顺滑。
-
-### 5. 🔒 完全本地化，安全无忧
-*   **离线可用**：所有功能均在本地运行，无需联网，保护您的素材隐私。
-*   **高清导出**：一键生成 **WebM 高清视频**，无水印、无时长限制，直接发布到 B 站、抖音或 YouTube。
+Transform static screenshots into professional demonstration videos with **cinematic camera movements, hand-drawn dynamic annotations, and smooth scene transitions** in just minutes.
 
 ---
 
-## 🚀 快速上手指南
+## ✨ Key Features
 
-### 第一步：创建场景
-1.  点击左侧 **“打开项目”** 或直接点击 **“上传图片添加新场景”**。
-2.  选择一张您需要演示的图片（支持截图、照片等）。
+### 1. 🎬 Drag & Drop, Cinematic Results
+No complex video editing software needed. Simply upload images, add **keyframes**, and automatically generate movie-like **pan, zoom, and dolly** camera movements.
+*   Built-in 10+ professional camera styles: **Impact Shake**, **Spring Bounce**, **Heartbeat Pulse**, and more.
+*   Transform your presentations from static slides into dynamic visual experiences.
 
-### 第二步：添加动效（关键帧）
-1.  在左侧控制栏中：
-    *   选择一种 **标注样式**（例如：手绘方框）。
-    *   选择一种 **运镜风格**（例如：标准推拉）。
-2.  点击 **“+ 添加到当前场景”**。
-3.  在右侧画布上，**拖拽/缩放** 出现的红色方框，将其对准您想强调的内容区域。
+### 2. 🖊️ Hand-Drawn Style Dynamic Annotations
+Say goodbye to boring red rectangles! Built-in hand-drawn style annotation components with natural drawing animations:
+*   ✅ **Hand-Drawn Box/Circle**: Highlight key content naturally.
+*   ✨ **Highlighter Marker**: Simulate real marker emphasis effects.
+*   🌊 **Wave Underline**: Elegantly underline important text.
+*   🔢 **Step Number Badges**: Auto-generate 1, 2, 3... sequences to guide viewers.
 
-### 第三步：调整细节（可选）
-1.  **添加文字**：在左侧时间轴点击刚添加的关键帧，输入解说文字。
-2.  **设置停留时间**：调整“运镜时长”和“停留时长”，控制节奏快慢。
-3.  **字幕模式**：勾选“字幕模式(固定屏幕)”，文字将居中固定显示。
+### 3. 📝 Smart Subtitle System
+Demonstrations need both visuals and narration.
+*   **Floating Subtitles**: Add explanatory text to each frame that follows camera movements.
+*   **Fixed Subtitle Mode**: Check to pin text at the bottom of the screen (like movie subtitles) for immersive narration.
+*   **Multiple Fonts**: Built-in beautiful Chinese and English fonts, ready to use without installation.
 
-### 第四步：生成视频
-1.  如有需要，可勾选左下角的 **“结束时回到全景”** 并输入片尾感谢语。
-2.  点击绿色的 **“生成演示视频”** 按钮。
-3.  稍等片刻（请勿切换窗口），视频生成后会自动下载到您的电脑。
+### 4. 🔄 Multi-Scene Seamless Transitions
+*   Support multiple images in one project (e.g., App Home → Detail Page → Profile).
+*   Smooth scene transitions: **Fade**, **Slide**, **Zoom**, and more.
 
----
-
-## � 安装说明
-
-ProMotion Studio 支持 Windows 和 macOS 双平台。
-
-*   **Mac 用户**: 下载 `.dmg` 文件，双击打开并将图标拖入 Applications 文件夹。
-*   **Windows 用户**: 下载 `.exe` 安装包，双击即可运行。
+### 5. 🔒 Fully Local, Privacy-First
+*   **Offline Ready**: All features run locally, no internet required, protecting your content privacy.
+*   **HD Export**: One-click export to **WebM HD video**, no watermarks, no time limits, ready for YouTube, TikTok, or Bilibili.
 
 ---
 
-## 🎯 适用场景
+## 🚀 Quick Start Guide
 
-*   📱 **App 产品演示**：展示新功能操作流程。
-*   🎓 **微课制作**：讲解课件重点，标注关键知识点。
-*   💼 **工作汇报**：让你的数据截图动起来，汇报更出彩。
-*   🎥 **自媒体视频**：快速制作图文解说类短视频素材。
+### Step 1: Create a Scene
+1.  Click **"Open Project"** on the left sidebar or **"Upload Image to Add New Scene"**.
+2.  Select an image you want to demonstrate (screenshots, photos, etc.).
+
+### Step 2: Add Animations (Keyframes)
+1.  In the left control panel:
+    *   Choose an **Annotation Style** (e.g., Hand-Drawn Box).
+    *   Choose a **Camera Style** (e.g., Standard Pan).
+2.  Click **"+ Add to Current Scene"**.
+3.  On the right canvas, **drag and resize** the red box to highlight your target area.
+
+### Step 3: Fine-Tune Details (Optional)
+1.  **Add Text**: Click the keyframe in the timeline to add narration text.
+2.  **Set Duration**: Adjust "Camera Duration" and "Hold Duration" to control pacing.
+3.  **Subtitle Mode**: Check "Subtitle Mode (Fixed on Screen)" to center and fix text display.
+
+### Step 4: Generate Video
+1.  Optionally, check **"End with Full View"** at the bottom left and add a closing message.
+2.  Click the green **"Generate Demo Video"** button.
+3.  Wait for rendering (don't switch windows), and the video will auto-download.
+
+---
+
+## 💾 Installation
+
+ProMotion Studio supports both Windows and macOS.
+
+*   **Mac Users**: Download the `.dmg` file, open it, and drag the icon to Applications folder.
+*   **Windows Users**: Download the `.exe` installer and double-click to run.
+
+---
+
+## 🎯 Use Cases
+
+*   📱 **App Product Demos**: Showcase new feature workflows.
+*   🎓 **Micro-Course Creation**: Explain key points in courseware with annotations.
+*   💼 **Work Reports**: Bring your data screenshots to life for impressive presentations.
+*   🎥 **Content Creation**: Quickly create image-based explainer video materials for social media.
+
+---
+
+## 📄 License
+
+ISC License
+
+---
+
+## 🌏 Language Support
+
+This application supports **English** and **简体中文** (Simplified Chinese). You can switch languages in the app settings.
